@@ -1,1 +1,202 @@
 
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+
+<style>
+
+html,body{
+
+margin:0;
+padding:0;
+
+width:100%;
+height:100%;
+
+background:transparent;
+
+overflow:hidden;
+
+}
+
+
+#canvas{
+
+position:relative;
+
+width:56.25vh;
+
+height:100vh;
+
+margin:auto;
+
+}
+
+
+.box{
+
+position:absolute;
+
+}
+
+
+iframe{
+
+width:100%;
+height:100%;
+
+border:none;
+
+background:transparent;
+
+pointer-events:none;
+
+}
+
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<div id="canvas">
+
+
+<div class="box" id="box1">
+
+<iframe src="https://tikfinity.zerody.one/widget/topliker?cid=2357749"></iframe>
+
+</div>
+
+
+<div class="box" id="box2">
+
+<iframe src="https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749"></iframe>
+
+</div>
+
+
+<div class="box" id="box3">
+
+<iframe src="https://tikfinity.zerody.one/widget/userinfo?cid=2357749"></iframe>
+
+</div>
+
+
+<div class="box" id="box4">
+
+<iframe src="https://tikfinity.zerody.one/widget/carousel?cid=2357749"></iframe>
+
+</div>
+
+
+</div>
+
+
+
+
+<script type="module">
+
+
+import { initializeApp } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+
+import { 
+getDatabase,
+ref,
+get
+}
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+
+
+const firebaseConfig = {
+
+apiKey: "AIzaSyDqdpAchewxlYmGrhFb5WyJKqbL5UP2XsA",
+
+authDomain: "tikfinity-overlay.firebaseapp.com",
+
+databaseURL: "https://tikfinity-overlay-default-rtdb.firebaseio.com",
+
+projectId: "tikfinity-overlay",
+
+storageBucket: "tikfinity-overlay.firebasestorage.app",
+
+messagingSenderId: "943639302610",
+
+appId: "1:943639302610:web:5e747094f2f6151b70380b"
+
+};
+
+
+
+const app = initializeApp(firebaseConfig);
+
+
+const database = getDatabase(app);
+
+
+
+
+const snapshot = await get(ref(database,"diseño"));
+
+
+
+if(snapshot.exists()){
+
+
+const diseño=snapshot.val();
+
+
+
+Object.keys(diseño).forEach(id=>{
+
+
+const box=document.getElementById(id);
+
+
+const data=diseño[id];
+
+
+
+if(box){
+
+
+box.style.left=data.left;
+
+box.style.top=data.top;
+
+box.style.width=data.width;
+
+box.style.height=data.height;
+
+box.style.transform=data.transform || "";
+
+
+
+}
+
+
+
+});
+
+
+}
+
+
+
+
+
+</script>
+
+
+</body>
+
+</html>
