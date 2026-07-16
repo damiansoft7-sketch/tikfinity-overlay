@@ -178,8 +178,33 @@ function crearBox(id, datos){
     seleccionarBox(box);
   });
 
+  // Doble click: ajustar el tamaño "natural" del widget (por si se ve cortado)
+  // y opcionalmente cambiar el enlace
+  box.addEventListener("dblclick", (e)=>{
+    e.stopPropagation();
+    editarBox(box);
+  });
+
   activarMoveable(box);
   return box;
+}
+
+// PERMITE AJUSTAR EL TAMAÑO NATURAL (baseWidth/baseHeight) Y EL LINK DE UNA CAJA
+// Útil cuando el widget se ve cortado: hay que agrandar su alto/ancho "natural"
+// hasta que se vea completo (el tamaño visible en pantalla lo sigue controlando
+// el arrastre normal con las esquinas celestes).
+function editarBox(box){
+  const anchoActual = box.dataset.baseWidth;
+  const altoActual = box.dataset.baseHeight;
+
+  const nuevoAncho = prompt("Ancho NATURAL del widget (px). Si se ve cortado a los lados, aumenta este valor:", anchoActual);
+  if(nuevoAncho === null) return;
+  const nuevoAlto = prompt("Alto NATURAL del widget (px). Si se ve cortado arriba/abajo, aumenta este valor:", altoActual);
+  if(nuevoAlto === null) return;
+
+  box.dataset.baseWidth = parseFloat(nuevoAncho) || anchoActual;
+  box.dataset.baseHeight = parseFloat(nuevoAlto) || altoActual;
+  actualizarEscalaContenido(box);
 }
 
 // ACTIVA ARRASTRE Y REDIMENSIONADO SOBRE UNA CAJA
