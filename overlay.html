@@ -1,296 +1,94 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-
 <meta charset="UTF-8">
-
 <style>
-
 html,body{
-
-margin:0;
-padding:0;
-
-width:100%;
-height:100%;
-
-background:transparent;
-
-overflow:hidden;
-
+  margin:0; padding:0;
+  width:100%; height:100%;
+  background:transparent;
+  overflow:hidden;
 }
-
-
+/* CONTENEDOR DE LA VISTA */
 #vista{
-
-width:100vw;
-height:100vh;
-
-overflow:hidden;
-
-position:absolute;
-
-left:0;
-top:0;
-
+  width:100vw; height:100vh;
+  overflow:hidden;
+  position:absolute;
+  left:0; top:0;
 }
-
-
+/* LIENZO REAL DEL EDITOR */
 #canvas{
-
-position:absolute;
-
-width:1080px;
-height:1920px;
-
-left:0;
-top:0;
-
-transform-origin:top left;
-
+  position:absolute;
+  left:0; top:0;
+  width:1080px; height:1920px;
+  transform-origin:top left;
 }
-
-
 .box{
-
-position:absolute;
-
-overflow:hidden;
-
+  position:absolute;
+  overflow:hidden;
 }
-
-
 iframe{
-
-width:100%;
-height:100%;
-
-border:none;
-
-background:transparent;
-
-pointer-events:none;
-
+  width:100%; height:100%;
+  border:none;
+  background:transparent;
+  pointer-events:none;
 }
-
 </style>
-
 </head>
-
-
 <body>
-
-
 <div id="vista">
-
-<div id="canvas">
-
+  <div id="canvas">
+    <!-- Las cajas se generan dinámicamente desde Firebase -->
+  </div>
 </div>
-
-</div>
-
-
 
 <script type="module">
+import { database, ref, get } from "./firebase.js";
 
+const canvas = document.getElementById("canvas");
 
-import { initializeApp }
-
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
-
-import {
-
-getDatabase,
-
-ref,
-
-get
-
-}
-
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
-
-
-
-
-const firebaseConfig={
-
-
-apiKey:"AIzaSyDqdpAchewxlYmGrhFb5WyJKL5UP2XsA",
-
-authDomain:"tikfinity-overlay.firebaseapp.com",
-
-databaseURL:"https://tikfinity-overlay-default-rtdb.firebaseio.com",
-
-projectId:"tikfinity-overlay",
-
-storageBucket:"tikfinity-overlay.firebasestorage.app",
-
-messagingSenderId:"943639302610",
-
-appId:"1:943639302610:web:5e747094f2f6151b70380b"
-
-};
-
-
-
-initializeApp(firebaseConfig);
-
-
-const database=getDatabase();
-
-
-
-
-const canvas=document.getElementById("canvas");
-
-
-
-
-
+// ESCALA EL LIENZO COMPLETO COMO 9:16
 function ajustarCanvas(){
-
-
-let escala=Math.min(
-
-window.innerWidth/1080,
-
-window.innerHeight/1920
-
-);
-
-
-canvas.style.transform=`scale(${escala})`;
-
-
+  const escala = Math.min(
+    window.innerWidth / 1080,
+    window.innerHeight / 1920
+  );
+  canvas.style.transform = `scale(${escala})`;
 }
-
-
-window.addEventListener(
-"resize",
-ajustarCanvas
-);
-
-
+window.addEventListener("resize", ajustarCanvas);
 ajustarCanvas();
 
+// CREA UNA CAJA CON SU IFRAME A PARTIR DE LOS DATOS GUARDADOS
+function crearBox(id, datos){
+  const box = document.createElement("div");
+  box.className = "box";
+  box.id = id;
+  box.style.left = datos.left;
+  box.style.top = datos.top;
+  box.style.width = datos.width;
+  box.style.height = datos.height;
 
+  if(datos.link){
+    const iframe = document.createElement("iframe");
+    iframe.src = datos.link;
+    box.appendChild(iframe);
+  }
 
-
-
-
-
-const snapshot = await get(
-ref(database,"diseño")
-);
-
-
-
-if(snapshot.exists()){
-
-
-const diseño=snapshot.val();
-
-
-
-Object.keys(diseño).forEach(id=>{
-
-
-const data=diseño[id];
-
-
-
-let url=data.url;
-
-
-
-// COMPATIBILIDAD CON LOS WIDGETS ANTIGUOS
-
-
-if(!url){
-
-
-if(id==="box1")
-
-url="https://tikfinity.zerody.one/widget/topliker?cid=2357749";
-
-
-if(id==="box2")
-
-url="https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749";
-
-
-if(id==="box3")
-
-url="https://tikfinity.zerody.one/widget/userinfo?cid=2357749";
-
-
-if(id==="box4")
-
-url="https://tikfinity.zerody.one/widget/carousel?cid=2357749";
-
-
+  canvas.appendChild(box);
 }
 
-
-
-
-if(!url) return;
-
-
-
-
-const box=document.createElement("div");
-
-
-box.className="box";
-
-
-box.id=id;
-
-
-
-box.style.left=data.left || "0px";
-
-box.style.top=data.top || "0px";
-
-box.style.width=data.width || "400px";
-
-box.style.height=data.height || "150px";
-
-
-
-
-const iframe=document.createElement("iframe");
-
-
-iframe.src=url;
-
-
-
-box.appendChild(iframe);
-
-
-
-canvas.appendChild(box);
-
-
-
-});
-
-
-
+// CARGAR POSICIONES Y ENLACES DESDE FIREBASE
+async function iniciar(){
+  const snapshot = await get(ref(database, "diseño"));
+  if(snapshot.exists()){
+    const diseño = snapshot.val();
+    Object.keys(diseño).forEach(id=>{
+      crearBox(id, diseño[id]);
+    });
+  }
 }
-
-
-
-
+iniciar();
 </script>
-
-
 </body>
-
 </html>
+
