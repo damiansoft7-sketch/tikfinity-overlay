@@ -22,23 +22,17 @@ overflow:hidden;
 }
 
 
-
-/* LIENZO IGUAL A LA CAPA WEB DE PRISM */
-
 #canvas{
 
 position:absolute;
 
 left:0;
-
 top:0;
 
 width:100%;
-
 height:100%;
 
 }
-
 
 
 
@@ -46,9 +40,8 @@ height:100%;
 
 position:absolute;
 
-overflow:hidden;
-
 }
+
 
 
 
@@ -56,10 +49,9 @@ overflow:hidden;
 iframe{
 
 width:100%;
-
 height:100%;
 
-border:none;
+border:0;
 
 background:transparent;
 
@@ -74,13 +66,10 @@ pointer-events:none;
 </head>
 
 
-
 <body>
 
 
-
 <div id="canvas">
-
 
 
 <div class="box" id="box1">
@@ -90,13 +79,11 @@ pointer-events:none;
 </div>
 
 
-
 <div class="box" id="box2">
 
 <iframe src="https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749"></iframe>
 
 </div>
-
 
 
 <div class="box" id="box3">
@@ -106,7 +93,6 @@ pointer-events:none;
 </div>
 
 
-
 <div class="box" id="box4">
 
 <iframe src="https://tikfinity.zerody.one/widget/carousel?cid=2357749"></iframe>
@@ -114,9 +100,7 @@ pointer-events:none;
 </div>
 
 
-
 </div>
-
 
 
 
@@ -126,7 +110,7 @@ pointer-events:none;
 <script type="module">
 
 
-import { initializeApp }
+import {initializeApp}
 
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
@@ -134,9 +118,7 @@ from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
 
 getDatabase,
-
 ref,
-
 get
 
 }
@@ -147,8 +129,7 @@ from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 
 
-const firebaseConfig = {
-
+const firebaseConfig={
 
 apiKey:"AIzaSyDqdpAchewxlYmGrhFb5WyJKqbL5UP2XsA",
 
@@ -164,35 +145,26 @@ messagingSenderId:"943639302610",
 
 appId:"1:943639302610:web:5e747094f2f6151b70380b"
 
-
 };
 
 
+initializeApp(firebaseConfig);
 
 
-
-const app = initializeApp(firebaseConfig);
-
-
-const database = getDatabase(app);
-
+const database=getDatabase();
 
 
 
 
 
-
-const snapshot = await get(ref(database,"diseño"));
-
+const datos=await get(ref(database,"diseño"));
 
 
 
+if(datos.exists()){
 
-if(snapshot.exists()){
 
-
-const diseño=snapshot.val();
-
+const diseño=datos.val();
 
 
 
@@ -201,50 +173,30 @@ Object.keys(diseño).forEach(id=>{
 
 const box=document.getElementById(id);
 
-
 const data=diseño[id];
-
-
 
 
 
 if(box){
 
 
-
-/*
-CONVERTIR DE 1080x1920
-DEL EDITOR A PORCENTAJES
-PARA PRISM
-*/
+box.style.left=(parseFloat(data.left)/1080*100)+"%";
 
 
-box.style.left =
-(parseFloat(data.left) / 1080 * 100) + "%";
+box.style.top=(parseFloat(data.top)/1920*100)+"%";
 
 
-
-box.style.top =
-(parseFloat(data.top) / 1920 * 100) + "%";
+box.style.width=(parseFloat(data.width)/1080*100)+"%";
 
 
-
-box.style.width =
-(parseFloat(data.width) / 1080 * 100) + "%";
-
-
-
-box.style.height =
-(parseFloat(data.height) / 1920 * 100) + "%";
+box.style.height=(parseFloat(data.height)/1920*100)+"%";
 
 
 
 }
 
 
-
 });
-
 
 
 }
@@ -252,7 +204,6 @@ box.style.height =
 
 
 </script>
-
 
 
 </body>
