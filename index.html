@@ -52,7 +52,6 @@ margin:auto;
 position:absolute;
 
 width:100%;
-
 height:100%;
 
 border:3px solid white;
@@ -61,15 +60,13 @@ box-sizing:border-box;
 
 pointer-events:none;
 
-z-index:100;
+z-index:50;
 
 }
 
 
 
-
-
-/* CONTENEDORES */
+/* CAJA DEL ELEMENTO */
 
 .box{
 
@@ -83,13 +80,19 @@ overflow:hidden;
 
 
 
-/* ESCALADOR */
+/* CONTENIDO REAL */
 
-.scale{
+.contenido{
 
-width:100%;
+position:absolute;
 
-height:100%;
+left:0;
+
+top:0;
+
+width:500px;
+
+height:300px;
 
 transform-origin:top left;
 
@@ -98,14 +101,13 @@ transform-origin:top left;
 
 
 
-
 iframe{
 
-width:100%;
+width:500px;
 
-height:100%;
+height:300px;
 
-border:none;
+border:0;
 
 background:transparent;
 
@@ -152,17 +154,16 @@ GUARDAR DISEÑO
 
 <div id="canvas">
 
-
 <div id="marco"></div>
 
 
 
 
 <div class="box" id="box1"
-style="left:5%;top:5%;width:40%;height:12%;">
+style="left:20px;top:40px;width:160px;height:90px;">
 
 
-<div class="scale">
+<div class="contenido">
 
 <iframe src="https://tikfinity.zerody.one/widget/topliker?cid=2357749"></iframe>
 
@@ -175,11 +176,12 @@ style="left:5%;top:5%;width:40%;height:12%;">
 
 
 
+
 <div class="box" id="box2"
-style="left:55%;top:5%;width:40%;height:12%;">
+style="left:180px;top:40px;width:160px;height:90px;">
 
 
-<div class="scale">
+<div class="contenido">
 
 <iframe src="https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749"></iframe>
 
@@ -194,10 +196,10 @@ style="left:55%;top:5%;width:40%;height:12%;">
 
 
 <div class="box" id="box3"
-style="left:5%;top:75%;width:40%;height:12%;">
+style="left:20px;top:450px;width:160px;height:90px;">
 
 
-<div class="scale">
+<div class="contenido">
 
 <iframe src="https://tikfinity.zerody.one/widget/userinfo?cid=2357749"></iframe>
 
@@ -211,12 +213,11 @@ style="left:5%;top:75%;width:40%;height:12%;">
 
 
 
-
 <div class="box" id="box4"
-style="left:55%;top:75%;width:40%;height:15%;">
+style="left:180px;top:500px;width:160px;height:120px;">
 
 
-<div class="scale">
+<div class="contenido">
 
 <iframe src="https://tikfinity.zerody.one/widget/carousel?cid=2357749"></iframe>
 
@@ -224,7 +225,6 @@ style="left:55%;top:75%;width:40%;height:15%;">
 
 
 </div>
-
 
 
 
@@ -261,8 +261,6 @@ from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 
 
-
-
 const firebaseConfig={
 
 
@@ -285,9 +283,7 @@ appId:"1:943639302610:web:5e747094f2f6151b70380b"
 
 
 
-
 const app=initializeApp(firebaseConfig);
-
 
 const database=getDatabase(app);
 
@@ -299,13 +295,14 @@ const boxes=document.querySelectorAll(".box");
 
 
 
-
-
-
 boxes.forEach(box=>{
 
 
-new Moveable(document.body,{
+const contenido=box.querySelector(".contenido");
+
+
+
+const moveable=new Moveable(document.body,{
 
 target:box,
 
@@ -317,34 +314,44 @@ keepRatio:false,
 
 origin:false
 
-
-})
-
-
-
-
-
-.on("drag",e=>{
-
-
-e.target.style.left=e.left+"px";
-
-e.target.style.top=e.top+"px";
-
-
-})
+});
 
 
 
 
 
+moveable.on("drag",e=>{
 
-.on("resize",e=>{
+
+box.style.left=e.left+"px";
+
+box.style.top=e.top+"px";
 
 
-e.target.style.width=e.width+"px";
+});
 
-e.target.style.height=e.height+"px";
+
+
+
+
+
+moveable.on("resize",e=>{
+
+
+box.style.width=e.width+"px";
+
+box.style.height=e.height+"px";
+
+
+
+let escalaX=e.width/500;
+
+let escalaY=e.height/300;
+
+
+
+contenido.style.transform=
+`scale(${escalaX},${escalaY})`;
 
 
 
@@ -353,9 +360,6 @@ e.target.style.height=e.height+"px";
 
 
 });
-
-
-
 
 
 
@@ -366,7 +370,6 @@ document.getElementById("guardar").onclick=()=>{
 
 
 let diseño={};
-
 
 
 
@@ -394,35 +397,16 @@ height:box.style.height
 
 
 
-
-
-
 set(ref(database,"diseño"),diseño)
-
 
 .then(()=>{
 
-
-alert("✅ Diseño guardado");
-
-
-})
-
-
-.catch(error=>{
-
-
-alert(error.message);
-
+alert("Diseño guardado");
 
 });
 
 
-
 };
-
-
-
 
 
 
