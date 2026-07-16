@@ -72,8 +72,8 @@ function crearBox(id, datos){
   box.style.height = datos.height;
 
   if(datos.link){
-    const baseWidth = parseFloat(datos.baseWidth) || parseFloat(datos.width) || 400;
-    const baseHeight = parseFloat(datos.baseHeight) || parseFloat(datos.height) || 150;
+    const baseWidth = parseFloat(datos.baseWidth) || 400;
+    const baseHeight = parseFloat(datos.baseHeight) || 150;
     const width = parseFloat(datos.width);
     const height = parseFloat(datos.height);
 
