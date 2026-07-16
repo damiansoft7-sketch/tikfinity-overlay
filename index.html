@@ -25,8 +25,6 @@ overflow:hidden;
 }
 
 
-/* FORMATO VERTICAL 9:16 */
-
 #canvas{
 
 position:relative;
@@ -35,6 +33,7 @@ width:56.25vh;
 height:100vh;
 
 max-width:100vw;
+
 max-height:177.78vw;
 
 margin:auto;
@@ -42,8 +41,6 @@ margin:auto;
 }
 
 
-
-/* MARCO DE GUIA */
 
 #marco{
 
@@ -63,8 +60,6 @@ z-index:20;
 }
 
 
-
-/* ELEMENTOS */
 
 .box{
 
@@ -89,30 +84,28 @@ pointer-events:none;
 
 
 
-
-/* BOTON */
-
 #guardar{
 
 position:fixed;
 
 top:10px;
-left:10px;
 
-z-index:999;
+left:10px;
 
 padding:12px;
 
 font-size:16px;
 
-}
+z-index:999;
 
+}
 
 
 </style>
 
 
 </head>
+
 
 
 <body>
@@ -143,10 +136,10 @@ style="left:5%;top:5%;width:45%;height:15%;">
 
 
 
-<!-- REDES SOCIALES -->
+<!-- SOCIAL ROTATOR -->
 
 <div class="box" id="box2"
-style="right:5%;top:5%;width:45%;height:15%;">
+style="left:50%;top:5%;width:45%;height:15%;">
 
 <iframe src="https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749"></iframe>
 
@@ -155,10 +148,10 @@ style="right:5%;top:5%;width:45%;height:15%;">
 
 
 
-<!-- INFORMACION USUARIO -->
+<!-- USER INFO -->
 
 <div class="box" id="box3"
-style="left:5%;bottom:20%;width:45%;height:15%;">
+style="left:5%;top:70%;width:45%;height:15%;">
 
 <iframe src="https://tikfinity.zerody.one/widget/userinfo?cid=2357749"></iframe>
 
@@ -167,10 +160,10 @@ style="left:5%;bottom:20%;width:45%;height:15%;">
 
 
 
-<!-- CARRUSEL REGALOS -->
+<!-- CAROUSEL -->
 
 <div class="box" id="box4"
-style="right:5%;bottom:5%;width:45%;height:20%;">
+style="left:50%;top:75%;width:45%;height:20%;">
 
 <iframe src="https://tikfinity.zerody.one/widget/carousel?cid=2357749"></iframe>
 
@@ -188,7 +181,8 @@ style="right:5%;bottom:5%;width:45%;height:20%;">
 <script type="module">
 
 
-import { initializeApp } 
+import { initializeApp }
+
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
 
@@ -229,6 +223,8 @@ appId: "1:943639302610:web:5e747094f2f6151b70380b"
 
 
 
+
+
 const app = initializeApp(firebaseConfig);
 
 
@@ -244,13 +240,11 @@ const boxes=document.querySelectorAll(".box");
 
 
 
-/* MOVER Y CAMBIAR TAMAÑO */
-
-
 boxes.forEach(box=>{
 
 
-const moveable=new Moveable(document.body,{
+const moveable = new Moveable(document.body,{
+
 
 target:box,
 
@@ -260,7 +254,9 @@ resizable:true,
 
 keepRatio:false
 
+
 });
+
 
 
 
@@ -272,6 +268,7 @@ e.target.style.transform=e.transform;
 
 
 });
+
 
 
 
@@ -296,7 +293,6 @@ e.target.style.height=e.height+"px";
 
 
 
-/* GUARDAR */
 
 document.getElementById("guardar").onclick=()=>{
 
@@ -304,24 +300,35 @@ document.getElementById("guardar").onclick=()=>{
 let diseño={};
 
 
+let canvas=document
+.getElementById("canvas")
+.getBoundingClientRect();
+
+
+
 
 boxes.forEach(box=>{
+
+
+let rect=box.getBoundingClientRect();
+
+
 
 
 diseño[box.id]={
 
 
-left:box.style.left,
+left:(rect.left-canvas.left)+"px",
 
-top:box.style.top,
+top:(rect.top-canvas.top)+"px",
 
-width:box.style.width,
+width:rect.width+"px",
 
-height:box.style.height,
+height:rect.height+"px"
 
-transform:box.style.transform || ""
 
 };
+
 
 
 });
@@ -335,14 +342,18 @@ set(ref(database,"diseño"),diseño)
 
 .then(()=>{
 
-alert("Diseño guardado correctamente");
+
+alert("✅ Diseño guardado correctamente");
+
 
 })
 
 
 .catch(error=>{
 
-alert(error.message);
+
+alert("Error Firebase: "+error.message);
+
 
 });
 
