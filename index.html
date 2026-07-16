@@ -9,9 +9,7 @@
 
 <script src="https://daybrush.com/moveable/release/latest/dist/moveable.min.js"></script>
 
-
 <style>
-
 
 html,body{
 
@@ -25,21 +23,19 @@ background:#222;
 
 overflow:hidden;
 
-}
+font-family:Arial;
 
+}
 
 
 
 #vista{
 
 width:100vw;
-
 height:100vh;
 
 display:flex;
-
 justify-content:center;
-
 align-items:center;
 
 overflow:hidden;
@@ -48,15 +44,11 @@ overflow:hidden;
 
 
 
-
-/* LIENZO REAL 9:16 */
-
 #canvas{
 
 position:relative;
 
 width:1080px;
-
 height:1920px;
 
 transform-origin:center;
@@ -65,46 +57,95 @@ transform-origin:center;
 
 
 
-
-
-/* IMAGEN GUIA */
-
 #guia{
 
 position:absolute;
 
 left:0;
-
 top:0;
 
 width:1080px;
-
 height:1920px;
 
-object-fit:fill;
+pointer-events:none;
 
 z-index:0;
-
-pointer-events:none;
 
 }
 
 
 
+.box{
+
+position:absolute;
+
+overflow:hidden;
+
+z-index:10;
+
+border:2px solid transparent;
+
+}
 
 
-/* BORDE */
+
+.box.selected{
+
+border:3px solid red;
+
+}
+
+
+
+iframe{
+
+width:100%;
+height:100%;
+
+border:none;
+
+pointer-events:none;
+
+background:transparent;
+
+}
+
+
+
+#menu{
+
+position:fixed;
+
+top:15px;
+left:15px;
+
+z-index:999;
+
+display:flex;
+
+gap:10px;
+
+}
+
+
+
+button{
+
+padding:12px;
+
+cursor:pointer;
+
+font-size:16px;
+
+}
+
+
 
 #marco{
 
 position:absolute;
 
-left:0;
-
-top:0;
-
 width:100%;
-
 height:100%;
 
 border:8px solid white;
@@ -119,20 +160,14 @@ z-index:20;
 
 
 
-
-
-/* ZONA SEGURA */
-
 #zona{
 
 position:absolute;
 
 left:50px;
-
 top:150px;
 
 width:980px;
-
 height:1520px;
 
 border:5px dashed rgba(255,255,255,.5);
@@ -145,150 +180,56 @@ z-index:15;
 
 
 
-
-
-.box{
-
-position:absolute;
-
-overflow:hidden;
-
-z-index:10;
-
-}
-
-
-
-
-iframe{
-
-width:100%;
-
-height:100%;
-
-border:none;
-
-background:transparent;
-
-pointer-events:none;
-
-}
-
-
-
-
-
-#guardar{
-
-position:fixed;
-
-top:15px;
-
-left:15px;
-
-z-index:999;
-
-padding:12px;
-
-}
-
-
-
-
 </style>
 
 </head>
-
-
 
 
 <body>
 
 
 
-<button id="guardar">
+<div id="menu">
 
-GUARDAR DISEÑO
-
+<button id="agregar">
+➕ Añadir Widget
 </button>
+
+
+<button id="eliminar">
+🗑 Eliminar
+</button>
+
+
+<button id="guardar">
+💾 Guardar
+</button>
+
+
+</div>
+
 
 
 
 
 <div id="vista">
 
-
 <div id="canvas">
-
 
 
 <img id="guia" src="guia.jpeg">
 
 
+<div id="zona"></div>
 
 <div id="marco"></div>
 
-<div id="zona"></div>
-
-
-
-
-
-
-<div class="box" id="box1"
-style="left:50px;top:200px;width:400px;height:150px;">
-
-
-<iframe src="https://tikfinity.zerody.one/widget/topliker?cid=2357749"></iframe>
-
-
-</div>
-
-
-
-
-
-<div class="box" id="box2"
-style="left:630px;top:200px;width:400px;height:150px;">
-
-
-<iframe src="https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749"></iframe>
-
-
-</div>
-
-
-
-
-
-<div class="box" id="box3"
-style="left:50px;top:1500px;width:400px;height:150px;">
-
-
-<iframe src="https://tikfinity.zerody.one/widget/userinfo?cid=2357749"></iframe>
-
-
-</div>
-
-
-
-
-
-<div class="box" id="box4"
-style="left:630px;top:1550px;width:400px;height:200px;">
-
-
-<iframe src="https://tikfinity.zerody.one/widget/carousel?cid=2357749"></iframe>
-
-
-</div>
 
 
 
 </div>
 
 </div>
-
 
 
 
@@ -298,9 +239,14 @@ style="left:630px;top:1550px;width:400px;height:200px;">
 <script type="module">
 
 
-import {initializeApp}
+import {
+
+initializeApp
+
+}
 
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
 
 
 import {
@@ -309,7 +255,11 @@ getDatabase,
 
 ref,
 
-set
+set,
+
+get,
+
+remove
 
 }
 
@@ -322,7 +272,7 @@ from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 const firebaseConfig={
 
 
-apiKey:"AIzaSyDqdpAchewxlYmGrhFb5WyJKqbL5UP2XsA",
+apiKey:"AIzaSyDqdpAchewxlYmGrhFb5WyJK7U5LP2XsA",
 
 authDomain:"tikfinity-overlay.firebaseapp.com",
 
@@ -340,8 +290,6 @@ appId:"1:943639302610:web:5e747094f2f6151b70380b"
 
 
 
-
-
 initializeApp(firebaseConfig);
 
 
@@ -351,13 +299,18 @@ const database=getDatabase();
 
 
 
-// AJUSTAR EDITOR AL MONITOR
+const canvas=document.getElementById("canvas");
+
+
+let seleccionado=null;
+
+let contador=1;
+
+
+
 
 
 function ajustarEditor(){
-
-
-const canvas=document.getElementById("canvas");
 
 
 let escala=Math.min(
@@ -369,16 +322,12 @@ let escala=Math.min(
 );
 
 
-
 canvas.style.transform=`scale(${escala})`;
-
 
 }
 
 
-
 window.addEventListener("resize",ajustarEditor);
-
 
 ajustarEditor();
 
@@ -387,18 +336,10 @@ ajustarEditor();
 
 
 
-
-// MOVER Y CAMBIAR TAMAÑO
-
-
-const boxes=document.querySelectorAll(".box");
+function activarMoveable(box){
 
 
-
-boxes.forEach(box=>{
-
-
-new Moveable(document.body,{
+const move=new Moveable(document.body,{
 
 target:box,
 
@@ -408,11 +349,12 @@ resizable:true,
 
 origin:false
 
-})
+});
 
 
 
-.on("drag",e=>{
+
+move.on("drag",e=>{
 
 
 box.style.left=e.left+"px";
@@ -420,11 +362,11 @@ box.style.left=e.left+"px";
 box.style.top=e.top+"px";
 
 
-})
+});
 
 
 
-.on("resize",e=>{
+move.on("resize",e=>{
 
 
 box.style.width=e.width+"px";
@@ -435,7 +377,185 @@ box.style.height=e.height+"px";
 });
 
 
+
+box.onclick=(e)=>{
+
+
+e.stopPropagation();
+
+
+document.querySelectorAll(".box")
+.forEach(b=>b.classList.remove("selected"));
+
+
+box.classList.add("selected");
+
+
+seleccionado=box;
+
+
+move.target=box;
+
+
+};
+
+
+}
+
+
+
+
+
+
+
+function crearWidget(id,url){
+
+
+
+const box=document.createElement("div");
+
+
+box.className="box";
+
+
+box.id=id;
+
+
+box.style.left="100px";
+
+box.style.top="300px";
+
+box.style.width="400px";
+
+box.style.height="150px";
+
+
+
+box.dataset.url=url;
+
+
+
+
+const iframe=document.createElement("iframe");
+
+
+iframe.src=url;
+
+
+box.appendChild(iframe);
+
+
+
+canvas.appendChild(box);
+
+
+
+activarMoveable(box);
+
+
+
+}
+
+
+
+
+
+
+
+// CARGAR DISEÑO
+
+
+const datos=await get(ref(database,"diseño"));
+
+
+
+if(datos.exists()){
+
+
+const diseño=datos.val();
+
+
+
+Object.keys(diseño).forEach(id=>{
+
+
+crearWidget(id,diseño[id].url);
+
+
+
+const box=document.getElementById(id);
+
+
+box.style.left=diseño[id].left;
+
+box.style.top=diseño[id].top;
+
+box.style.width=diseño[id].width;
+
+box.style.height=diseño[id].height;
+
+
+
 });
+
+
+
+}
+
+
+
+
+
+// AÑADIR
+
+
+document.getElementById("agregar").onclick=()=>{
+
+
+let url=prompt(
+"Pega URL del widget TikFinity:"
+);
+
+
+if(!url)return;
+
+
+
+contador++;
+
+
+crearWidget(
+"box"+contador,
+url
+);
+
+
+
+};
+
+
+
+
+
+
+
+// ELIMINAR
+
+
+document.getElementById("eliminar").onclick=()=>{
+
+
+if(!seleccionado)return;
+
+
+
+seleccionado.remove();
+
+
+seleccionado=null;
+
+
+};
 
 
 
@@ -453,11 +573,14 @@ let diseño={};
 
 
 
-boxes.forEach(box=>{
+document.querySelectorAll(".box")
+.forEach(box=>{
 
 
 diseño[box.id]={
 
+
+url:box.dataset.url,
 
 left:box.style.left,
 
@@ -471,22 +594,16 @@ height:box.style.height
 };
 
 
-
 });
 
 
 
+set(
+ref(database,"diseño"),
+diseño
 
-
-set(ref(database,"diseño"),diseño)
-
-.then(()=>{
-
-
-alert("✅ Diseño guardado correctamente");
-
-
-});
+)
+.then(()=>alert("Diseño guardado"));
 
 
 
