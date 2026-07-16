@@ -22,17 +22,44 @@ overflow:hidden;
 }
 
 
+/* CONTENEDOR DE LA VISTA */
+
+#vista{
+
+width:100vw;
+
+height:100vh;
+
+overflow:hidden;
+
+position:absolute;
+
+left:0;
+
+top:0;
+
+}
+
+
+
+/* LIENZO REAL DEL EDITOR */
+
 #canvas{
 
 position:absolute;
 
 left:0;
+
 top:0;
 
-width:100%;
-height:100%;
+width:1080px;
+
+height:1920px;
+
+transform-origin:top left;
 
 }
+
 
 
 
@@ -40,8 +67,9 @@ height:100%;
 
 position:absolute;
 
-}
+overflow:hidden;
 
+}
 
 
 
@@ -49,9 +77,10 @@ position:absolute;
 iframe{
 
 width:100%;
+
 height:100%;
 
-border:0;
+border:none;
 
 background:transparent;
 
@@ -66,7 +95,11 @@ pointer-events:none;
 </head>
 
 
+
 <body>
+
+
+<div id="vista">
 
 
 <div id="canvas">
@@ -79,11 +112,13 @@ pointer-events:none;
 </div>
 
 
+
 <div class="box" id="box2">
 
 <iframe src="https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749"></iframe>
 
 </div>
+
 
 
 <div class="box" id="box3">
@@ -93,6 +128,7 @@ pointer-events:none;
 </div>
 
 
+
 <div class="box" id="box4">
 
 <iframe src="https://tikfinity.zerody.one/widget/carousel?cid=2357749"></iframe>
@@ -100,7 +136,12 @@ pointer-events:none;
 </div>
 
 
+
 </div>
+
+
+</div>
+
 
 
 
@@ -110,7 +151,7 @@ pointer-events:none;
 <script type="module">
 
 
-import {initializeApp}
+import { initializeApp }
 
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
@@ -118,7 +159,9 @@ from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
 
 getDatabase,
+
 ref,
+
 get
 
 }
@@ -129,7 +172,9 @@ from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 
 
+
 const firebaseConfig={
+
 
 apiKey:"AIzaSyDqdpAchewxlYmGrhFb5WyJKqbL5UP2XsA",
 
@@ -148,6 +193,9 @@ appId:"1:943639302610:web:5e747094f2f6151b70380b"
 };
 
 
+
+
+
 initializeApp(firebaseConfig);
 
 
@@ -157,14 +205,55 @@ const database=getDatabase();
 
 
 
-const datos=await get(ref(database,"diseño"));
+
+// ESCALA EL LIENZO COMPLETO COMO 9:16
+
+
+function ajustarCanvas(){
+
+
+const canvas=document.getElementById("canvas");
+
+
+const escala=Math.min(
+
+window.innerWidth / 1080,
+
+window.innerHeight / 1920
+
+);
 
 
 
-if(datos.exists()){
+canvas.style.transform=
+`scale(${escala})`;
+
+}
 
 
-const diseño=datos.val();
+
+window.addEventListener("resize",ajustarCanvas);
+
+
+ajustarCanvas();
+
+
+
+
+
+
+
+// CARGAR POSICIONES
+
+
+const snapshot=await get(ref(database,"diseño"));
+
+
+
+if(snapshot.exists()){
+
+
+const diseño=snapshot.val();
 
 
 
@@ -173,6 +262,7 @@ Object.keys(diseño).forEach(id=>{
 
 const box=document.getElementById(id);
 
+
 const data=diseño[id];
 
 
@@ -180,20 +270,22 @@ const data=diseño[id];
 if(box){
 
 
-box.style.left=(parseFloat(data.left)/1080*100)+"%";
+
+box.style.left=data.left;
 
 
-box.style.top=(parseFloat(data.top)/1920*100)+"%";
+box.style.top=data.top;
 
 
-box.style.width=(parseFloat(data.width)/1080*100)+"%";
+box.style.width=data.width;
 
 
-box.style.height=(parseFloat(data.height)/1920*100)+"%";
+box.style.height=data.height;
 
 
 
 }
+
 
 
 });
