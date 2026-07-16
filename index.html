@@ -4,15 +4,14 @@
 <head>
 
 <meta charset="UTF-8">
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 
-<!-- Librería para mover y cambiar tamaño -->
 <script src="https://daybrush.com/moveable/release/latest/dist/moveable.min.js"></script>
 
 
 <style>
+
 
 html,body{
 
@@ -29,7 +28,7 @@ html,body{
 }
 
 
-/* LIENZO VERTICAL 9:16 */
+/* LIENZO 9:16 */
 
 #canvas{
 
@@ -45,28 +44,41 @@ html,body{
 
     background:transparent;
 
-    overflow:hidden;
+}
+
+
+
+/* CAJAS MOVIBLES */
+
+.box{
+
+    position:absolute;
 
 }
 
 
-/* Widgets */
 
-.widget{
+/* EL CONTENIDO NO BLOQUEA EL ARRASTRE */
 
-    position:absolute;
+iframe{
+
+    width:100%;
+    height:100%;
 
     border:none;
 
     background:transparent;
 
+    pointer-events:none;
+
 }
 
 
-/* Posiciones iniciales */
+
+/* POSICIONES INICIALES */
 
 
-#widget1{
+#box1{
 
     top:5%;
     left:5%;
@@ -78,7 +90,7 @@ html,body{
 
 
 
-#widget2{
+#box2{
 
     top:5%;
     right:5%;
@@ -90,7 +102,7 @@ html,body{
 
 
 
-#widget3{
+#box3{
 
     bottom:20%;
     left:5%;
@@ -102,7 +114,7 @@ html,body{
 
 
 
-#widget4{
+#box4{
 
     bottom:5%;
     right:5%;
@@ -120,42 +132,44 @@ html,body{
 </head>
 
 
-<body>
 
+<body>
 
 
 <div id="canvas">
 
 
-<iframe 
-class="widget"
-id="widget1"
-src="https://tikfinity.zerody.one/widget/topliker?cid=2357749">
-</iframe>
+
+<div class="box" id="box1">
+
+<iframe src="https://tikfinity.zerody.one/widget/topliker?cid=2357749"></iframe>
+
+</div>
 
 
 
-<iframe 
-class="widget"
-id="widget2"
-src="https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749">
-</iframe>
+<div class="box" id="box2">
+
+<iframe src="https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749"></iframe>
+
+</div>
 
 
 
-<iframe 
-class="widget"
-id="widget3"
-src="https://tikfinity.zerody.one/widget/userinfo?cid=2357749">
-</iframe>
+<div class="box" id="box3">
+
+<iframe src="https://tikfinity.zerody.one/widget/userinfo?cid=2357749"></iframe>
+
+</div>
 
 
 
-<iframe 
-class="widget"
-id="widget4"
-src="https://tikfinity.zerody.one/widget/carousel?cid=2357749">
-</iframe>
+<div class="box" id="box4">
+
+<iframe src="https://tikfinity.zerody.one/widget/carousel?cid=2357749"></iframe>
+
+</div>
+
 
 
 </div>
@@ -166,15 +180,16 @@ src="https://tikfinity.zerody.one/widget/carousel?cid=2357749">
 <script>
 
 
-const widgets = document.querySelectorAll(".widget");
+const boxes = document.querySelectorAll(".box");
 
 
-widgets.forEach((element)=>{
+
+boxes.forEach((box)=>{
 
 
 const moveable = new Moveable(document.body,{
 
-    target: element,
+    target:box,
 
     draggable:true,
 
@@ -186,6 +201,7 @@ const moveable = new Moveable(document.body,{
 
 
 
+
 /* MOVER */
 
 moveable.on("drag", e=>{
@@ -193,6 +209,8 @@ moveable.on("drag", e=>{
     e.target.style.transform = e.transform;
 
 });
+
+
 
 
 
@@ -211,6 +229,7 @@ moveable.on("resize", e=>{
 
 
 });
+
 
 
 </script>
