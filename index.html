@@ -13,7 +13,6 @@
 
 <style>
 
-
 html,body{
 
 margin:0;
@@ -30,7 +29,7 @@ overflow:hidden;
 
 
 
-/* LIENZO VERTICAL 9:16 */
+/* LIENZO 9:16 */
 
 #canvas{
 
@@ -46,13 +45,11 @@ max-height:177.78vw;
 
 margin:auto;
 
-background:transparent;
-
 }
 
 
 
-/* BORDE DE GUIA */
+/* BORDE */
 
 #marco{
 
@@ -62,7 +59,6 @@ left:0;
 top:0;
 
 width:100%;
-
 height:100%;
 
 border:3px solid white;
@@ -78,15 +74,13 @@ z-index:20;
 
 
 
-
-/* ELEMENTOS */
-
 .box{
 
 position:absolute;
 
-}
+z-index:5;
 
+}
 
 
 
@@ -108,9 +102,6 @@ pointer-events:none;
 
 
 
-
-/* BOTON */
-
 #guardar{
 
 position:fixed;
@@ -124,8 +115,6 @@ padding:12px;
 z-index:999;
 
 }
-
-
 
 
 
@@ -149,20 +138,13 @@ GUARDAR DISEÑO
 
 
 
-
-
 <div id="canvas">
-
 
 
 <div id="marco"></div>
 
 
 
-
-
-
-<!-- TOP LIKER -->
 
 <div class="box" id="box1"
 style="left:5%;top:5%;width:40%;height:12%;">
@@ -175,9 +157,6 @@ style="left:5%;top:5%;width:40%;height:12%;">
 
 
 
-
-<!-- SOCIAL ROTATOR -->
-
 <div class="box" id="box2"
 style="left:55%;top:5%;width:40%;height:12%;">
 
@@ -188,11 +167,6 @@ style="left:55%;top:5%;width:40%;height:12%;">
 
 
 
-
-
-
-
-<!-- USER INFO -->
 
 <div class="box" id="box3"
 style="left:5%;top:75%;width:40%;height:12%;">
@@ -205,19 +179,12 @@ style="left:5%;top:75%;width:40%;height:12%;">
 
 
 
-
-
-<!-- CAROUSEL -->
-
 <div class="box" id="box4"
 style="left:55%;top:75%;width:40%;height:15%;">
 
 <iframe src="https://tikfinity.zerody.one/widget/carousel?cid=2357749"></iframe>
 
 </div>
-
-
-
 
 
 
@@ -233,8 +200,8 @@ style="left:55%;top:75%;width:40%;height:15%;">
 <script type="module">
 
 
+import { initializeApp }
 
-import { initializeApp } 
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
 
@@ -256,24 +223,22 @@ from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 
 
+const firebaseConfig={
 
 
-const firebaseConfig = {
+apiKey:"AIzaSyDqdpAchewxlYmGrhFb5WyJKqbL5UP2XsA",
 
+authDomain:"tikfinity-overlay.firebaseapp.com",
 
-apiKey: "AIzaSyDqdpAchewxlYmGrhFb5WyJKqbL5UP2XsA",
+databaseURL:"https://tikfinity-overlay-default-rtdb.firebaseio.com",
 
-authDomain: "tikfinity-overlay.firebaseapp.com",
+projectId:"tikfinity-overlay",
 
-databaseURL: "https://tikfinity-overlay-default-rtdb.firebaseio.com",
+storageBucket:"tikfinity-overlay.firebasestorage.app",
 
-projectId: "tikfinity-overlay",
+messagingSenderId:"943639302610",
 
-storageBucket: "tikfinity-overlay.firebasestorage.app",
-
-messagingSenderId: "943639302610",
-
-appId: "1:943639302610:web:5e747094f2f6151b70380b"
+appId:"1:943639302610:web:5e747094f2f6151b70380b"
 
 
 };
@@ -282,13 +247,10 @@ appId: "1:943639302610:web:5e747094f2f6151b70380b"
 
 
 
-
-const app = initializeApp(firebaseConfig);
-
-
-const database = getDatabase(app);
+const app=initializeApp(firebaseConfig);
 
 
+const database=getDatabase(app);
 
 
 
@@ -300,26 +262,22 @@ const boxes=document.querySelectorAll(".box");
 
 
 
-
-
-
 boxes.forEach(box=>{
-
 
 
 const moveable=new Moveable(document.body,{
 
-
 target:box,
-
 
 draggable:true,
 
-
 resizable:true,
 
+scalable:true,
 
-keepRatio:false
+keepRatio:false,
+
+origin:false
 
 
 });
@@ -328,6 +286,8 @@ keepRatio:false
 
 
 
+
+// MOVER
 
 moveable.on("drag",e=>{
 
@@ -345,13 +305,23 @@ e.target.style.top=e.top+"px";
 
 
 
+// CAMBIAR TAMAÑO
 
 moveable.on("resize",e=>{
 
 
-e.target.style.width=e.width+"px";
+const target=e.target;
 
-e.target.style.height=e.height+"px";
+
+target.style.width=e.width+"px";
+
+target.style.height=e.height+"px";
+
+
+
+target.style.left=e.drag.left+"px";
+
+target.style.top=e.drag.top+"px";
 
 
 });
@@ -359,6 +329,7 @@ e.target.style.height=e.height+"px";
 
 
 
+
 });
 
 
@@ -367,10 +338,12 @@ e.target.style.height=e.height+"px";
 
 
 
+
+
+// GUARDAR FIREBASE
 
 
 document.getElementById("guardar").onclick=()=>{
-
 
 
 let diseño={};
@@ -378,26 +351,22 @@ let diseño={};
 
 
 
-
-
 boxes.forEach(box=>{
-
 
 
 diseño[box.id]={
 
 
-left:box.style.left,
+left:box.offsetLeft+"px",
 
-top:box.style.top,
+top:box.offsetTop+"px",
 
-width:box.style.width,
+width:box.offsetWidth+"px",
 
-height:box.style.height
+height:box.offsetHeight+"px"
 
 
 };
-
 
 
 });
@@ -407,9 +376,7 @@ height:box.style.height
 
 
 
-
 set(ref(database,"diseño"),diseño)
-
 
 
 .then(()=>{
@@ -420,8 +387,6 @@ alert("✅ Diseño guardado correctamente");
 
 })
 
-
-
 .catch(error=>{
 
 
@@ -431,9 +396,7 @@ alert("Error: "+error.message);
 });
 
 
-
 };
-
 
 
 
