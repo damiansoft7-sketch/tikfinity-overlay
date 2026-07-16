@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 
@@ -27,8 +26,6 @@ overflow:hidden;
 
 
 
-/* CONTENEDOR QUE ADAPTA EL LIENZO */
-
 #vista{
 
 width:100vw;
@@ -47,55 +44,27 @@ overflow:hidden;
 
 
 
-/* LIENZO REAL 9:16 */
 
 #canvas{
 
-
 position:relative;
-
 
 width:1080px;
 
-
 height:1920px;
-
-
 
 transform-origin:center;
 
-
-
 }
-
 
 
 
 
 .box{
 
-
 position:absolute;
 
-
 overflow:hidden;
-
-
-}
-
-
-
-
-
-.contenido{
-
-
-width:500px;
-
-height:300px;
-
-transform-origin:top left;
-
 
 }
 
@@ -105,11 +74,9 @@ transform-origin:top left;
 
 iframe{
 
+width:100%;
 
-width:500px;
-
-height:300px;
-
+height:100%;
 
 border:none;
 
@@ -117,13 +84,11 @@ background:transparent;
 
 pointer-events:none;
 
-
 }
 
 
 
 </style>
-
 
 </head>
 
@@ -138,64 +103,39 @@ pointer-events:none;
 <div id="canvas">
 
 
-
 <div class="box" id="box1">
-
-<div class="contenido">
 
 <iframe src="https://tikfinity.zerody.one/widget/topliker?cid=2357749"></iframe>
 
 </div>
 
-</div>
-
-
-
 
 
 <div class="box" id="box2">
-
-<div class="contenido">
 
 <iframe src="https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749"></iframe>
 
 </div>
 
-</div>
-
-
-
 
 
 <div class="box" id="box3">
-
-<div class="contenido">
 
 <iframe src="https://tikfinity.zerody.one/widget/userinfo?cid=2357749"></iframe>
 
 </div>
 
-</div>
-
-
-
 
 
 <div class="box" id="box4">
-
-<div class="contenido">
 
 <iframe src="https://tikfinity.zerody.one/widget/carousel?cid=2357749"></iframe>
 
 </div>
 
-</div>
-
-
 
 
 </div>
-
 
 </div>
 
@@ -232,4 +172,128 @@ from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 const firebaseConfig={
 
 
-apiKey:"AIzaSyDqdpAchewxlYm
+apiKey:"AIzaSyDqdpAchewxlYmGrhFb5WyJKqbL5UP2XsA",
+
+authDomain:"tikfinity-overlay.firebaseapp.com",
+
+databaseURL:"https://tikfinity-overlay-default-rtdb.firebaseio.com",
+
+projectId:"tikfinity-overlay",
+
+storageBucket:"tikfinity-overlay.firebasestorage.app",
+
+messagingSenderId:"943639302610",
+
+appId:"1:943639302610:web:5e747094f2f6151b70380b"
+
+
+};
+
+
+
+
+
+const app=initializeApp(firebaseConfig);
+
+
+const database=getDatabase(app);
+
+
+
+
+
+// AJUSTAR A PANTALLA DE PRISM
+
+
+function ajustarCanvas(){
+
+
+const canvas=document.getElementById("canvas");
+
+
+let escala=Math.min(
+
+window.innerWidth / 1080,
+
+window.innerHeight / 1920
+
+);
+
+
+
+canvas.style.transform=`scale(${escala})`;
+
+
+}
+
+
+
+window.addEventListener("resize",ajustarCanvas);
+
+
+ajustarCanvas();
+
+
+
+
+
+
+
+
+// CARGAR DISEÑO
+
+
+const snapshot=await get(ref(database,"diseño"));
+
+
+
+if(snapshot.exists()){
+
+
+const diseño=snapshot.val();
+
+
+
+Object.keys(diseño).forEach(id=>{
+
+
+
+const box=document.getElementById(id);
+
+
+const data=diseño[id];
+
+
+
+if(box){
+
+
+box.style.left=data.left;
+
+box.style.top=data.top;
+
+box.style.width=data.width;
+
+box.style.height=data.height;
+
+
+
+}
+
+
+
+});
+
+
+
+}
+
+
+
+</script>
+
+
+
+</body>
+
+</html>
