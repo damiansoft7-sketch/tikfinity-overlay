@@ -7,10 +7,12 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+
 <script src="https://daybrush.com/moveable/release/latest/dist/moveable.min.js"></script>
 
 
 <style>
+
 
 html,body{
 
@@ -45,6 +47,7 @@ overflow:hidden;
 
 
 
+
 #canvas{
 
 position:relative;
@@ -56,7 +59,6 @@ height:1920px;
 transform-origin:center;
 
 }
-
 
 
 
@@ -91,9 +93,9 @@ position:absolute;
 
 overflow:hidden;
 
-border:2px dashed transparent;
-
 z-index:10;
+
+border:2px dashed transparent;
 
 }
 
@@ -114,11 +116,15 @@ width:100%;
 
 height:100%;
 
-border:none;
+border:0;
+
+background:transparent;
 
 pointer-events:none;
 
 }
+
+
 
 
 
@@ -142,8 +148,6 @@ padding:10px;
 
 margin:3px;
 
-cursor:pointer;
-
 }
 
 
@@ -154,18 +158,27 @@ cursor:pointer;
 </head>
 
 
-
 <body>
 
 
 
 <div id="menu">
 
+
 <button id="agregar">
 
 ➕ Agregar
 
 </button>
+
+
+
+<button id="editar">
+
+✏️ Editar link
+
+</button>
+
 
 
 <button id="eliminar">
@@ -175,13 +188,18 @@ cursor:pointer;
 </button>
 
 
+
 <button id="guardar">
 
 💾 Guardar
 
 </button>
 
+
+
 </div>
+
+
 
 
 
@@ -201,7 +219,6 @@ cursor:pointer;
 
 
 </div>
-
 
 
 
@@ -256,12 +273,10 @@ appId:"1:943639302610:web:5e747094f2f6151b70380b"
 
 
 
-
 initializeApp(firebaseConfig);
 
 
 const db=getDatabase();
-
 
 
 
@@ -279,10 +294,9 @@ let contador=0;
 
 
 
-// AJUSTAR EDITOR
-
 
 function ajustar(){
+
 
 let escala=Math.min(
 
@@ -295,10 +309,13 @@ let escala=Math.min(
 
 canvas.style.transform=`scale(${escala})`;
 
+
 }
 
 
+
 window.addEventListener("resize",ajustar);
+
 
 ajustar();
 
@@ -308,11 +325,33 @@ ajustar();
 
 
 
-// CREAR ELEMENTO
+function seleccionar(box){
+
+
+document.querySelectorAll(".box")
+
+.forEach(e=>{
+
+e.classList.remove("seleccionado");
+
+});
+
+
+box.classList.add("seleccionado");
+
+
+seleccionado=box;
+
+
+}
+
+
+
+
+
 
 
 function crearElemento(url,id){
-
 
 
 let box=document.createElement("div");
@@ -335,9 +374,13 @@ box.style.height="200px";
 
 
 
+box.dataset.url=url;
+
+
+
 box.innerHTML=`
 
-<iframe src="${url}"></iframe>
+<iframe src="${url.trim()}"></iframe>
 
 `;
 
@@ -350,19 +393,20 @@ canvas.appendChild(box);
 activarMovimiento(box);
 
 
+
 }
 
 
 
 
-// MOVER Y CAMBIAR TAMAÑO
+
 
 
 function activarMovimiento(box){
 
 
 
-new Moveable(document.body,{
+const mover=new Moveable(document.body,{
 
 target:box,
 
@@ -372,21 +416,12 @@ resizable:true,
 
 origin:false
 
-})
+});
 
 
 
-.on("click",()=>{
 
-
-seleccionar(box);
-
-
-})
-
-
-
-.on("drag",e=>{
+mover.on("drag",e=>{
 
 
 box.style.left=e.left+"px";
@@ -394,11 +429,12 @@ box.style.left=e.left+"px";
 box.style.top=e.top+"px";
 
 
-})
+});
 
 
 
-.on("resize",e=>{
+
+mover.on("resize",e=>{
 
 
 box.style.width=e.width+"px";
@@ -413,32 +449,16 @@ box.style.height=e.height+"px";
 
 box.onclick=()=>{
 
+
 seleccionar(box);
+
 
 };
 
 
-}
-
-
-
-
-
-function seleccionar(box){
-
-
-document.querySelectorAll(".box")
-
-.forEach(x=>x.classList.remove("seleccionado"));
-
-
-box.classList.add("seleccionado");
-
-
-seleccionado=box;
-
 
 }
+
 
 
 
@@ -454,7 +474,7 @@ document.getElementById("agregar").onclick=()=>{
 
 let url=prompt(
 
-"Pegue el link del widget TikFinity"
+"Pegue el link completo de TikFinity"
 
 );
 
@@ -483,6 +503,55 @@ url,
 
 
 
+
+
+// EDITAR LINK
+
+
+document.getElementById("editar").onclick=()=>{
+
+
+if(!seleccionado){
+
+alert("Seleccione un elemento primero");
+
+return;
+
+}
+
+
+
+let nuevo=prompt(
+
+"Nuevo link TikFinity",
+
+seleccionado.dataset.url
+
+);
+
+
+
+if(!nuevo)return;
+
+
+
+seleccionado.dataset.url=nuevo;
+
+
+seleccionado.querySelector("iframe").src=nuevo.trim();
+
+
+
+};
+
+
+
+
+
+
+
+
+
 // ELIMINAR
 
 
@@ -500,6 +569,8 @@ seleccionado=null;
 
 }
 
+
+
 };
 
 
@@ -508,7 +579,9 @@ seleccionado=null;
 
 
 
-// GUARDAR FIREBASE
+
+
+// GUARDAR
 
 
 document.getElementById("guardar").onclick=async()=>{
@@ -526,7 +599,7 @@ document.querySelectorAll(".box")
 diseño[box.id]={
 
 
-url:box.querySelector("iframe").src,
+url:box.dataset.url,
 
 left:box.style.left,
 
@@ -546,7 +619,6 @@ height:box.style.height
 
 
 
-
 await set(
 
 ref(db,"diseño"),
@@ -557,8 +629,7 @@ diseño
 
 
 
-alert("Diseño guardado");
-
+alert("✅ Diseño guardado");
 
 
 };
@@ -571,7 +642,7 @@ alert("Diseño guardado");
 
 
 
-// CARGAR DISEÑO EXISTENTE
+// CARGAR
 
 
 const datos=await get(ref(db,"diseño"));
@@ -581,14 +652,15 @@ const datos=await get(ref(db,"diseño"));
 if(datos.exists()){
 
 
-let diseño=datos.val();
+const diseño=datos.val();
 
 
 
 Object.keys(diseño).forEach(id=>{
 
 
-let d=diseño[id];
+const d=diseño[id];
+
 
 
 crearElemento(d.url,id);
