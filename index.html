@@ -5,14 +5,7 @@
 
 <meta charset="UTF-8">
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-
-<script src="https://daybrush.com/moveable/release/latest/dist/moveable.min.js"></script>
-
-
 <style>
-
 
 html,body{
 
@@ -22,68 +15,45 @@ padding:0;
 width:100%;
 height:100%;
 
-background:#222;
+background:transparent;
 
 overflow:hidden;
 
 }
 
 
+/* LIENZO 9:16 */
 
 #vista{
 
-width:100vw;
-height:100vh;
+position:absolute;
 
-display:flex;
+left:0;
+top:0;
 
-justify-content:center;
-
-align-items:center;
+width:100%;
+height:100%;
 
 overflow:hidden;
 
 }
-
 
 
 
 #canvas{
 
-position:relative;
-
-width:1080px;
-
-height:1920px;
-
-transform-origin:center;
-
-}
-
-
-
-
-#guia{
-
 position:absolute;
 
 left:0;
-
 top:0;
 
 width:1080px;
 
 height:1920px;
 
-object-fit:fill;
-
-z-index:0;
-
-pointer-events:none;
+transform-origin:top left;
 
 }
-
-
 
 
 
@@ -93,20 +63,7 @@ position:absolute;
 
 overflow:hidden;
 
-z-index:10;
-
-border:2px dashed transparent;
-
 }
-
-
-
-.box.seleccionado{
-
-border:2px dashed yellow;
-
-}
-
 
 
 
@@ -116,37 +73,11 @@ width:100%;
 
 height:100%;
 
-border:0;
+border:none;
 
 background:transparent;
 
 pointer-events:none;
-
-}
-
-
-
-
-
-#menu{
-
-position:fixed;
-
-top:10px;
-
-left:10px;
-
-z-index:999;
-
-}
-
-
-
-button{
-
-padding:10px;
-
-margin:3px;
 
 }
 
@@ -161,66 +92,16 @@ margin:3px;
 <body>
 
 
-
-<div id="menu">
-
-
-<button id="agregar">
-
-➕ Agregar
-
-</button>
-
-
-
-<button id="editar">
-
-✏️ Editar link
-
-</button>
-
-
-
-<button id="eliminar">
-
-🗑 Eliminar
-
-</button>
-
-
-
-<button id="guardar">
-
-💾 Guardar
-
-</button>
-
-
-
-</div>
-
-
-
-
-
-
-
 <div id="vista">
 
 
 <div id="canvas">
 
 
-<img id="guia" src="guia.jpeg">
-
-
-
 </div>
 
 
 </div>
-
-
 
 
 
@@ -239,8 +120,6 @@ import {
 getDatabase,
 
 ref,
-
-set,
 
 get
 
@@ -276,6 +155,7 @@ appId:"1:943639302610:web:5e747094f2f6151b70380b"
 initializeApp(firebaseConfig);
 
 
+
 const db=getDatabase();
 
 
@@ -284,294 +164,39 @@ const db=getDatabase();
 const canvas=document.getElementById("canvas");
 
 
-let seleccionado=null;
-
-let contador=0;
 
 
 
 
+// ESCALA AUTOMATICA 9:16
 
 
-
-
-function ajustar(){
+function ajustarCanvas(){
 
 
 let escala=Math.min(
 
-(window.innerWidth-100)/1080,
+window.innerWidth/1080,
 
-(window.innerHeight-100)/1920
-
-);
-
-
-canvas.style.transform=`scale(${escala})`;
-
-
-}
-
-
-
-window.addEventListener("resize",ajustar);
-
-
-ajustar();
-
-
-
-
-
-
-
-function seleccionar(box){
-
-
-document.querySelectorAll(".box")
-
-.forEach(e=>{
-
-e.classList.remove("seleccionado");
-
-});
-
-
-box.classList.add("seleccionado");
-
-
-seleccionado=box;
-
-
-}
-
-
-
-
-
-
-
-function crearElemento(url,id){
-
-
-let box=document.createElement("div");
-
-
-box.className="box";
-
-
-box.id=id;
-
-
-
-box.style.left="340px";
-
-box.style.top="800px";
-
-box.style.width="400px";
-
-box.style.height="200px";
-
-
-
-box.dataset.url=url;
-
-
-
-box.innerHTML=`
-
-<iframe src="${url.trim()}"></iframe>
-
-`;
-
-
-
-canvas.appendChild(box);
-
-
-
-activarMovimiento(box);
-
-
-
-}
-
-
-
-
-
-
-
-function activarMovimiento(box){
-
-
-
-const mover=new Moveable(document.body,{
-
-target:box,
-
-draggable:true,
-
-resizable:true,
-
-origin:false
-
-});
-
-
-
-
-mover.on("drag",e=>{
-
-
-box.style.left=e.left+"px";
-
-box.style.top=e.top+"px";
-
-
-});
-
-
-
-
-mover.on("resize",e=>{
-
-
-box.style.width=e.width+"px";
-
-box.style.height=e.height+"px";
-
-
-});
-
-
-
-
-box.onclick=()=>{
-
-
-seleccionar(box);
-
-
-};
-
-
-
-}
-
-
-
-
-
-
-
-
-// AGREGAR
-
-
-document.getElementById("agregar").onclick=()=>{
-
-
-let url=prompt(
-
-"Pegue el link completo de TikFinity"
+window.innerHeight/1920
 
 );
 
 
 
-if(!url)return;
+canvas.style.transform=
 
-
-
-contador++;
-
-
-crearElemento(
-
-url,
-
-"elemento_"+contador
-
-);
-
-
-};
-
-
-
-
-
-
-
-
-// EDITAR LINK
-
-
-document.getElementById("editar").onclick=()=>{
-
-
-if(!seleccionado){
-
-alert("Seleccione un elemento primero");
-
-return;
-
-}
-
-
-
-let nuevo=prompt(
-
-"Nuevo link TikFinity",
-
-seleccionado.dataset.url
-
-);
-
-
-
-if(!nuevo)return;
-
-
-
-seleccionado.dataset.url=nuevo;
-
-
-seleccionado.querySelector("iframe").src=nuevo.trim();
-
-
-
-};
-
-
-
-
-
-
-
-
-
-// ELIMINAR
-
-
-document.getElementById("eliminar").onclick=()=>{
-
-
-if(seleccionado){
-
-
-seleccionado.remove();
-
-
-seleccionado=null;
+`scale(${escala})`;
 
 
 }
 
 
 
-};
+window.addEventListener("resize",ajustarCanvas);
+
+
+ajustarCanvas();
 
 
 
@@ -580,69 +205,7 @@ seleccionado=null;
 
 
 
-
-// GUARDAR
-
-
-document.getElementById("guardar").onclick=async()=>{
-
-
-let diseño={};
-
-
-
-document.querySelectorAll(".box")
-
-.forEach(box=>{
-
-
-diseño[box.id]={
-
-
-url:box.dataset.url,
-
-left:box.style.left,
-
-top:box.style.top,
-
-width:box.style.width,
-
-height:box.style.height
-
-
-};
-
-
-
-});
-
-
-
-
-await set(
-
-ref(db,"diseño"),
-
-diseño
-
-);
-
-
-
-alert("✅ Diseño guardado");
-
-
-};
-
-
-
-
-
-
-
-
-
-// CARGAR
+// CARGAR ELEMENTOS
 
 
 const datos=await get(ref(db,"diseño"));
@@ -652,6 +215,7 @@ const datos=await get(ref(db,"diseño"));
 if(datos.exists()){
 
 
+
 const diseño=datos.val();
 
 
@@ -659,25 +223,38 @@ const diseño=datos.val();
 Object.keys(diseño).forEach(id=>{
 
 
-const d=diseño[id];
+const elemento=diseño[id];
 
 
 
-crearElemento(d.url,id);
+const box=document.createElement("div");
+
+
+box.className="box";
+
+box.id=id;
 
 
 
-let box=document.getElementById(id);
+box.style.left=elemento.left;
+
+box.style.top=elemento.top;
+
+box.style.width=elemento.width;
+
+box.style.height=elemento.height;
 
 
 
-box.style.left=d.left;
+box.innerHTML=`
 
-box.style.top=d.top;
+<iframe src="${elemento.url}"></iframe>
 
-box.style.width=d.width;
+`;
 
-box.style.height=d.height;
+
+
+canvas.appendChild(box);
 
 
 
@@ -690,6 +267,7 @@ box.style.height=d.height;
 
 
 </script>
+
 
 
 </body>
