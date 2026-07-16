@@ -1,30 +1,45 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+// firebase.js
+
+import { initializeApp } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
 
 import { 
+
 getDatabase,
 ref,
 set,
-get
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+get,
+remove,
+update
+
+} 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+
+
 
 
 const firebaseConfig = {
 
-apiKey: "AIzaSyDqdpAchewxlYmGrhFb5WyJKqbL5UP2XsA",
 
-authDomain: "tikfinity-overlay.firebaseapp.com",
+apiKey:"AIzaSyDqdpAchewxlYmGrhFb5WyJK7U5LP2XsA",
 
-databaseURL: "https://tikfinity-overlay-default-rtdb.firebaseio.com",
+authDomain:"tikfinity-overlay.firebaseapp.com",
 
-projectId: "tikfinity-overlay",
+databaseURL:"https://tikfinity-overlay-default-rtdb.firebaseio.com",
 
-storageBucket: "tikfinity-overlay.firebasestorage.app",
+projectId:"tikfinity-overlay",
 
-messagingSenderId: "943639302610",
+storageBucket:"tikfinity-overlay.firebasestorage.app",
 
-appId: "1:943639302610:web:5e747094f2f6151b70380b"
+messagingSenderId:"943639302610",
+
+appId:"1:943639302610:web:5e747094f2f6151b70380b"
 
 };
+
+
 
 
 
@@ -34,4 +49,21 @@ const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
 
-export {database,ref,set,get};
+
+
+
+export {
+
+database,
+
+ref,
+
+set,
+
+get,
+
+remove,
+
+update
+
+};
