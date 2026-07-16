@@ -2,12 +2,11 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 
-html, body {
+html,body{
     margin:0;
     padding:0;
     width:100%;
@@ -16,74 +15,84 @@ html, body {
     overflow:hidden;
 }
 
-/* Todos los widgets */
-iframe {
+
+/* CONTENEDOR 9:16 */
+#canvas{
+
+    position:relative;
+
+    width:56.25vh;
+    height:100vh;
+
+    max-width:100vw;
+    max-height:177.78vw;
+
+    margin:auto;
+
+    overflow:hidden;
+
+}
+
+
+/* WIDGETS */
+
+iframe{
+
     position:absolute;
     border:none;
     background:transparent;
-}
-
-
-/* ===========================
-   WIDGET 1 - TOP LIKER
-   Arriba izquierda
-=========================== */
-
-#widget1 {
-
-    top:3%;
-    left:3%;
-
-    width:45%;
-    height:15%;
 
 }
 
 
-/* ===========================
-   WIDGET 2 - REDES SOCIALES
-   Arriba derecha
-=========================== */
+/* TOP LIKER */
 
-#widget2 {
+#widget1{
 
-    top:3%;
-    right:3%;
+    top:5%;
+    left:5%;
 
-    width:45%;
-    height:15%;
+    width:40%;
+    height:12%;
 
 }
 
 
-/* ===========================
-   WIDGET 3 - INFORMACION USUARIO
-   Abajo izquierda
-=========================== */
+/* REDES */
 
-#widget3 {
+#widget2{
+
+    top:5%;
+    right:5%;
+
+    width:40%;
+    height:12%;
+
+}
+
+
+/* USUARIO */
+
+#widget3{
 
     bottom:18%;
-    left:3%;
+    left:5%;
+
+    width:45%;
+    height:15%;
+
+}
+
+
+/* CARRUSEL */
+
+#widget4{
+
+    bottom:5%;
+    right:5%;
 
     width:45%;
     height:18%;
-
-}
-
-
-/* ===========================
-   WIDGET 4 - CARRUSEL
-   Abajo derecha
-=========================== */
-
-#widget4 {
-
-    bottom:3%;
-    right:3%;
-
-    width:45%;
-    height:20%;
 
 }
 
@@ -96,39 +105,30 @@ iframe {
 <body>
 
 
-<!-- TOP LIKER -->
+<div id="canvas">
 
-<iframe 
-id="widget1"
+
+<iframe id="widget1"
 src="https://tikfinity.zerody.one/widget/topliker?cid=2357749">
 </iframe>
 
 
-
-<!-- REDES SOCIALES -->
-
-<iframe 
-id="widget2"
+<iframe id="widget2"
 src="https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749">
 </iframe>
 
 
-
-<!-- INFORMACION USUARIO -->
-
-<iframe 
-id="widget3"
+<iframe id="widget3"
 src="https://tikfinity.zerody.one/widget/userinfo?cid=2357749">
 </iframe>
 
 
-
-<!-- CARRUSEL REGALOS -->
-
-<iframe 
-id="widget4"
+<iframe id="widget4"
 src="https://tikfinity.zerody.one/widget/carousel?cid=2357749">
 </iframe>
+
+
+</div>
 
 
 </body>
