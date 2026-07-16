@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 
@@ -6,7 +5,14 @@
 
 <meta charset="UTF-8">
 
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+
+<script src="https://daybrush.com/moveable/release/latest/dist/moveable.min.js"></script>
+
+
 <style>
+
 
 html,body{
 
@@ -16,24 +22,56 @@ padding:0;
 width:100%;
 height:100%;
 
-background:transparent;
+background:#222;
 
 overflow:hidden;
 
 }
 
 
+
+/* PANTALLA CELULAR 9:16 */
+
 #canvas{
 
 position:relative;
 
-width:56.25vh;
+width:360px;
 
-height:100vh;
+height:640px;
 
 margin:auto;
 
+background:transparent;
+
 }
+
+
+
+/* BORDE DE GUIA */
+
+#marco{
+
+position:absolute;
+
+left:0;
+top:0;
+
+width:100%;
+height:100%;
+
+border:3px solid white;
+
+box-sizing:border-box;
+
+pointer-events:none;
+
+z-index:20;
+
+}
+
+
+
 
 
 .box{
@@ -41,6 +79,9 @@ margin:auto;
 position:absolute;
 
 }
+
+
+
 
 
 iframe{
@@ -57,46 +98,117 @@ pointer-events:none;
 }
 
 
+
+
+
+#guardar{
+
+position:fixed;
+
+top:10px;
+
+left:10px;
+
+padding:12px;
+
+z-index:999;
+
+}
+
+
+
 </style>
 
+
 </head>
+
 
 
 <body>
 
 
+
+<button id="guardar">
+
+GUARDAR DISEÑO
+
+</button>
+
+
+
+
+
 <div id="canvas">
 
 
-<div class="box" id="box1">
+<div id="marco"></div>
+
+
+
+
+<div class="box" id="box1"
+style="left:20px;top:40px;width:160px;height:90px;">
+
 
 <iframe src="https://tikfinity.zerody.one/widget/topliker?cid=2357749"></iframe>
 
+
 </div>
 
 
-<div class="box" id="box2">
+
+
+
+
+<div class="box" id="box2"
+style="left:180px;top:40px;width:160px;height:90px;">
+
 
 <iframe src="https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749"></iframe>
 
+
 </div>
 
 
-<div class="box" id="box3">
+
+
+
+
+
+<div class="box" id="box3"
+style="left:20px;top:450px;width:160px;height:90px;">
+
 
 <iframe src="https://tikfinity.zerody.one/widget/userinfo?cid=2357749"></iframe>
 
+
 </div>
 
 
-<div class="box" id="box4">
+
+
+
+
+
+
+<div class="box" id="box4"
+style="left:180px;top:500px;width:160px;height:120px;">
+
 
 <iframe src="https://tikfinity.zerody.one/widget/carousel?cid=2357749"></iframe>
 
+
 </div>
 
 
+
+
+
+
 </div>
+
+
+
 
 
 
@@ -108,18 +220,26 @@ import { initializeApp }
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
 
-import { 
+import {
+
 getDatabase,
+
 ref,
-get
+
+set
+
 }
+
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+
 
 
 
 const firebaseConfig = {
 
-apiKey: "AIzaSyDqdpAchewxlYmGrhFb5WyJKqbL5UP2XsA",
+
+apiKey: "AIzaSyDqdpAchewxlYmGrhFb5WyJKbL5UP2XsA",
 
 authDomain: "tikfinity-overlay.firebaseapp.com",
 
@@ -137,6 +257,8 @@ appId: "1:943639302610:web:5e747094f2f6151b70380b"
 
 
 
+
+
 const app = initializeApp(firebaseConfig);
 
 
@@ -145,56 +267,130 @@ const database = getDatabase(app);
 
 
 
-const snapshot = await get(ref(database,"diseño"));
+
+const boxes=document.querySelectorAll(".box");
 
 
 
-if(snapshot.exists()){
 
 
-const diseño=snapshot.val();
+boxes.forEach(box=>{
 
 
+const moveable=new Moveable(document.body,{
 
-Object.keys(diseño).forEach(id=>{
+target:box,
 
+draggable:true,
 
-const box=document.getElementById(id);
+resizable:true,
 
+keepRatio:false
 
-const data=diseño[id];
-
-
-
-if(box){
-
-
-box.style.left=data.left;
-
-box.style.top=data.top;
-
-box.style.width=data.width;
-
-box.style.height=data.height;
-
-box.style.transform=data.transform || "";
+});
 
 
 
-}
+
+
+moveable.on("drag",e=>{
+
+
+e.target.style.left=e.left+"px";
+
+e.target.style.top=e.top+"px";
+
+
+});
+
+
+
+
+
+
+moveable.on("resize",e=>{
+
+
+e.target.style.width=e.width+"px";
+
+e.target.style.height=e.height+"px";
+
+
+});
+
 
 
 
 });
 
 
-}
+
+
+
+
+
+
+document.getElementById("guardar").onclick=()=>{
+
+
+let diseño={};
+
+
+
+boxes.forEach(box=>{
+
+
+diseño[box.id]={
+
+
+left:box.offsetLeft+"px",
+
+top:box.offsetTop+"px",
+
+width:box.offsetWidth+"px",
+
+height:box.offsetHeight+"px"
+
+
+};
+
+
+});
+
+
+
+
+
+set(ref(database,"diseño"),diseño)
+
+
+.then(()=>{
+
+
+alert("✅ Diseño guardado correctamente");
+
+
+})
+
+
+.catch(error=>{
+
+
+alert(error.message);
+
+
+});
+
+
+
+};
 
 
 
 
 
 </script>
+
 
 
 </body>
