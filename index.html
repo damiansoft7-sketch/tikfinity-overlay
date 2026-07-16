@@ -30,8 +30,7 @@ overflow:hidden;
 
 
 
-
-/* LIENZO 9:16 */
+/* PANTALLA CELULAR 9:16 */
 
 #canvas{
 
@@ -43,52 +42,22 @@ height:640px;
 
 margin:auto;
 
-overflow:hidden;
+background:transparent;
 
 }
 
 
 
-
-/* VIDEO GUIA */
-
-#guiaVideo{
-
-position:absolute;
-
-left:0;
-
-top:0;
-
-width:100%;
-
-height:100%;
-
-object-fit:cover;
-
-opacity:0.35;
-
-pointer-events:none;
-
-z-index:1;
-
-}
-
-
-
-
-/* MARCO */
+/* BORDE DE GUIA */
 
 #marco{
 
 position:absolute;
 
 left:0;
-
 top:0;
 
 width:100%;
-
 height:100%;
 
 border:3px solid white;
@@ -105,13 +74,9 @@ z-index:20;
 
 
 
-/* WIDGETS */
-
 .box{
 
 position:absolute;
-
-z-index:5;
 
 }
 
@@ -122,7 +87,6 @@ z-index:5;
 iframe{
 
 width:100%;
-
 height:100%;
 
 border:none;
@@ -153,7 +117,6 @@ z-index:999;
 
 
 
-
 </style>
 
 
@@ -166,28 +129,19 @@ z-index:999;
 
 
 <button id="guardar">
+
 GUARDAR DISEÑO
+
 </button>
+
+
 
 
 
 <div id="canvas">
 
 
-<!-- VIDEO DE GUIA -->
-
-<video id="guiaVideo" autoplay muted loop>
-
-<source src="figoverlay1.mp4" type="video/mp4">
-
-</video>
-
-
-
-
 <div id="marco"></div>
-
-
 
 
 
@@ -205,6 +159,7 @@ style="left:20px;top:40px;width:160px;height:90px;">
 
 
 
+
 <div class="box" id="box2"
 style="left:180px;top:40px;width:160px;height:90px;">
 
@@ -213,6 +168,7 @@ style="left:180px;top:40px;width:160px;height:90px;">
 
 
 </div>
+
 
 
 
@@ -233,6 +189,8 @@ style="left:20px;top:450px;width:160px;height:90px;">
 
 
 
+
+
 <div class="box" id="box4"
 style="left:180px;top:500px;width:160px;height:120px;">
 
@@ -241,6 +199,9 @@ style="left:180px;top:500px;width:160px;height:120px;">
 
 
 </div>
+
+
+
 
 
 
@@ -255,10 +216,8 @@ style="left:180px;top:500px;width:160px;height:120px;">
 <script type="module">
 
 
-
 import { initializeApp } 
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
 
 
 import {
@@ -277,12 +236,10 @@ from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 
 
-
-
 const firebaseConfig = {
 
 
-apiKey: "AIzaSyDqdpAchewxlYmGrhFb5WyJKqbL5UP2XsA",
+apiKey: "AIzaSyDqdpAchewxlYmGrhFb5WyJKbL5UP2XsA",
 
 authDomain: "tikfinity-overlay.firebaseapp.com",
 
@@ -295,7 +252,6 @@ storageBucket: "tikfinity-overlay.firebasestorage.app",
 messagingSenderId: "943639302610",
 
 appId: "1:943639302610:web:5e747094f2f6151b70380b"
-
 
 };
 
@@ -312,11 +268,7 @@ const database = getDatabase(app);
 
 
 
-
-
 const boxes=document.querySelectorAll(".box");
-
-
 
 
 
@@ -327,22 +279,15 @@ boxes.forEach(box=>{
 
 const moveable=new Moveable(document.body,{
 
-
 target:box,
-
 
 draggable:true,
 
-
 resizable:true,
-
 
 keepRatio:false
 
-
 });
-
-
 
 
 
@@ -363,13 +308,10 @@ e.target.style.top=e.top+"px";
 
 
 
-
-
 moveable.on("resize",e=>{
 
 
 e.target.style.width=e.width+"px";
-
 
 e.target.style.height=e.height+"px";
 
@@ -378,8 +320,8 @@ e.target.style.height=e.height+"px";
 
 
 
-});
 
+});
 
 
 
@@ -391,13 +333,11 @@ e.target.style.height=e.height+"px";
 document.getElementById("guardar").onclick=()=>{
 
 
-
 let diseño={};
 
 
 
 boxes.forEach(box=>{
-
 
 
 diseño[box.id]={
@@ -415,7 +355,6 @@ height:box.offsetHeight+"px"
 };
 
 
-
 });
 
 
@@ -428,7 +367,7 @@ set(ref(database,"diseño"),diseño)
 .then(()=>{
 
 
-alert("✅ Diseño guardado");
+alert("✅ Diseño guardado correctamente");
 
 
 })
@@ -449,7 +388,9 @@ alert(error.message);
 
 
 
+
 </script>
+
 
 
 </body>
