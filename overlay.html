@@ -22,6 +22,7 @@ html,body{
   left:0; top:0;
   width:1080px; height:1920px;
   transform-origin:top left;
+  will-change: transform;
 }
 .box{
   position:absolute;
@@ -34,6 +35,7 @@ iframe{
   background:transparent;
   pointer-events:none;
   transform-origin:top left;
+  will-change: transform;
 }
 </style>
 </head>
@@ -50,6 +52,7 @@ import { database, ref, get } from "./firebase.js";
 const canvas = document.getElementById("canvas");
 
 // ESCALA EL LIENZO COMPLETO COMO 9:16
+let resizePendiente = false;
 function ajustarCanvas(){
   const escala = Math.min(
     window.innerWidth / 1080,
@@ -57,7 +60,16 @@ function ajustarCanvas(){
   );
   canvas.style.transform = `scale(${escala})`;
 }
-window.addEventListener("resize", ajustarCanvas);
+// requestAnimationFrame evita que se recalcule más veces de las necesarias
+// si el resize se dispara muy seguido (ahorra CPU en sesiones largas)
+window.addEventListener("resize", ()=>{
+  if(resizePendiente) return;
+  resizePendiente = true;
+  requestAnimationFrame(()=>{
+    ajustarCanvas();
+    resizePendiente = false;
+  });
+});
 ajustarCanvas();
 
 // CREA UNA CAJA CON SU IFRAME A PARTIR DE LOS DATOS GUARDADOS,
