@@ -6,24 +6,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-
 <script src="https://daybrush.com/moveable/release/latest/dist/moveable.min.js"></script>
 
 
 <style>
 
-
 html,body{
 
-    margin:0;
-    padding:0;
+margin:0;
+padding:0;
 
-    width:100%;
-    height:100%;
+width:100%;
+height:100%;
 
-    background:#222;
+background:#222;
 
-    overflow:hidden;
+overflow:hidden;
 
 }
 
@@ -32,44 +30,42 @@ html,body{
 
 #canvas{
 
-    position:relative;
+position:relative;
 
-    width:56.25vh;
-    height:100vh;
+width:56.25vh;
+height:100vh;
 
-    max-width:100vw;
-    max-height:177.78vw;
+max-width:100vw;
+max-height:177.78vw;
 
-    margin:auto;
-
-    background:transparent;
+margin:auto;
 
 }
 
 
 
-/* CAJAS MOVIBLES */
+/* ELEMENTOS MOVIBLES */
 
 .box{
 
-    position:absolute;
+position:absolute;
 
 }
 
 
 
-/* EL CONTENIDO NO BLOQUEA EL ARRASTRE */
+/* CONTENIDO */
 
 iframe{
 
-    width:100%;
-    height:100%;
+width:100%;
+height:100%;
 
-    border:none;
+border:none;
 
-    background:transparent;
+background:transparent;
 
-    pointer-events:none;
+pointer-events:none;
 
 }
 
@@ -80,11 +76,11 @@ iframe{
 
 #box1{
 
-    top:5%;
-    left:5%;
+top:5%;
+left:5%;
 
-    width:45%;
-    height:15%;
+width:45%;
+height:15%;
 
 }
 
@@ -92,11 +88,11 @@ iframe{
 
 #box2{
 
-    top:5%;
-    right:5%;
+top:5%;
+right:5%;
 
-    width:45%;
-    height:15%;
+width:45%;
+height:15%;
 
 }
 
@@ -104,11 +100,11 @@ iframe{
 
 #box3{
 
-    bottom:20%;
-    left:5%;
+bottom:20%;
+left:5%;
 
-    width:45%;
-    height:15%;
+width:45%;
+height:15%;
 
 }
 
@@ -116,14 +112,13 @@ iframe{
 
 #box4{
 
-    bottom:5%;
-    right:5%;
+bottom:5%;
+right:5%;
 
-    width:45%;
-    height:20%;
+width:45%;
+height:20%;
 
 }
-
 
 
 </style>
@@ -132,12 +127,10 @@ iframe{
 </head>
 
 
-
 <body>
 
 
 <div id="canvas">
-
 
 
 <div class="box" id="box1">
@@ -171,9 +164,7 @@ iframe{
 </div>
 
 
-
 </div>
-
 
 
 
@@ -184,29 +175,68 @@ const boxes = document.querySelectorAll(".box");
 
 
 
+// CARGAR DISEÑO GUARDADO
+
 boxes.forEach((box)=>{
+
+
+const saved = localStorage.getItem(box.id);
+
+
+if(saved){
+
+
+const data = JSON.parse(saved);
+
+
+box.style.left = data.left;
+
+box.style.top = data.top;
+
+box.style.width = data.width;
+
+box.style.height = data.height;
+
+box.style.transform = data.transform || "";
+
+
+
+}
+
+
 
 
 const moveable = new Moveable(document.body,{
 
-    target:box,
 
-    draggable:true,
+target:box,
 
-    resizable:true,
 
-    keepRatio:false,
+draggable:true,
+
+
+resizable:true,
+
+
+keepRatio:false
+
+
 
 });
 
 
 
 
-/* MOVER */
+// MOVER
 
 moveable.on("drag", e=>{
 
-    e.target.style.transform = e.transform;
+
+e.target.style.transform = e.transform;
+
+
+guardar(box);
+
 
 });
 
@@ -214,26 +244,71 @@ moveable.on("drag", e=>{
 
 
 
-/* CAMBIAR TAMAÑO */
+// CAMBIAR TAMAÑO
+
 
 moveable.on("resize", e=>{
 
 
-    e.target.style.width = e.width + "px";
+e.target.style.width = e.width + "px";
 
-    e.target.style.height = e.height + "px";
+
+e.target.style.height = e.height + "px";
+
+
+guardar(box);
 
 
 });
 
 
 
+
 });
+
+
+
+
+
+// GUARDAR DISEÑO
+
+
+function guardar(box){
+
+
+
+const data={
+
+
+left:box.style.left,
+
+
+top:box.style.top,
+
+
+width:box.style.width,
+
+
+height:box.style.height,
+
+
+transform:box.style.transform
+
+
+
+};
+
+
+
+localStorage.setItem(box.id,JSON.stringify(data));
+
+
+
+}
 
 
 
 </script>
-
 
 
 </body>
