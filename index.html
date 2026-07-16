@@ -8,7 +8,9 @@
 
 <script src="https://daybrush.com/moveable/release/latest/dist/moveable.min.js"></script>
 
+
 <style>
+
 
 html,body{
 
@@ -25,52 +27,21 @@ overflow:hidden;
 }
 
 
-/* LIENZO 9:16 */
 
-#canvas{
 
-position:relative;
+/* VISTA DEL EDITOR */
 
-width:56.25vh;
+#vista{
+
+width:100vw;
 
 height:100vh;
 
-max-width:100vw;
+display:flex;
 
-max-height:177.78vw;
+justify-content:center;
 
-margin:auto;
-
-}
-
-
-
-/* MARCO */
-
-#marco{
-
-position:absolute;
-
-width:100%;
-height:100%;
-
-border:3px solid white;
-
-box-sizing:border-box;
-
-pointer-events:none;
-
-z-index:50;
-
-}
-
-
-
-/* CAJA DEL ELEMENTO */
-
-.box{
-
-position:absolute;
+align-items:center;
 
 overflow:hidden;
 
@@ -78,69 +49,209 @@ overflow:hidden;
 
 
 
+/* LIENZO REAL 9:16 */
+
+#canvas{
 
 
-/* CONTENIDO REAL */
+position:relative;
 
-.contenido{
+
+width:1080px;
+
+
+height:1920px;
+
+
+background:transparent;
+
+
+transform:scale(0.35);
+
+
+transform-origin:center;
+
+
+
+}
+
+
+
+
+
+/* BORDE REAL */
+
+#marco{
+
 
 position:absolute;
+
 
 left:0;
 
 top:0;
 
+
+width:100%;
+
+height:100%;
+
+
+border:8px solid white;
+
+
+box-sizing:border-box;
+
+
+pointer-events:none;
+
+
+z-index:100;
+
+
+}
+
+
+
+
+
+
+
+/* ZONA SEGURA */
+
+#zona{
+
+
+position:absolute;
+
+
+left:50px;
+
+top:150px;
+
+
+width:980px;
+
+height:1520px;
+
+
+border:5px dashed rgba(255,255,255,0.4);
+
+
+pointer-events:none;
+
+
+z-index:90;
+
+
+}
+
+
+
+
+
+
+
+.box{
+
+
+position:absolute;
+
+
+overflow:hidden;
+
+
+}
+
+
+
+
+
+
+.contenido{
+
+
+position:absolute;
+
+
+left:0;
+
+
+top:0;
+
+
 width:500px;
+
 
 height:300px;
 
+
 transform-origin:top left;
 
+
 }
+
 
 
 
 
 iframe{
 
+
 width:500px;
+
 
 height:300px;
 
+
 border:0;
+
 
 background:transparent;
 
+
 pointer-events:none;
 
-display:block;
 
 }
+
+
+
 
 
 
 
 #guardar{
 
+
 position:fixed;
 
-top:10px;
 
-left:10px;
+top:15px;
+
+
+left:15px;
+
 
 padding:12px;
 
+
 z-index:999;
+
 
 }
 
 
+
 </style>
+
 
 </head>
 
 
+
 <body>
+
 
 
 <button id="guardar">
@@ -152,15 +263,24 @@ GUARDAR DISEÑO
 
 
 
+
+<div id="vista">
+
+
 <div id="canvas">
 
+
+
 <div id="marco"></div>
+
+<div id="zona"></div>
+
 
 
 
 
 <div class="box" id="box1"
-style="left:20px;top:40px;width:160px;height:90px;">
+style="left:50px;top:200px;width:400px;height:150px;">
 
 
 <div class="contenido">
@@ -177,8 +297,9 @@ style="left:20px;top:40px;width:160px;height:90px;">
 
 
 
+
 <div class="box" id="box2"
-style="left:180px;top:40px;width:160px;height:90px;">
+style="left:630px;top:200px;width:400px;height:150px;">
 
 
 <div class="contenido">
@@ -195,8 +316,9 @@ style="left:180px;top:40px;width:160px;height:90px;">
 
 
 
+
 <div class="box" id="box3"
-style="left:20px;top:450px;width:160px;height:90px;">
+style="left:50px;top:1500px;width:400px;height:150px;">
 
 
 <div class="contenido">
@@ -213,8 +335,9 @@ style="left:20px;top:450px;width:160px;height:90px;">
 
 
 
+
 <div class="box" id="box4"
-style="left:180px;top:500px;width:160px;height:120px;">
+style="left:630px;top:1550px;width:400px;height:200px;">
 
 
 <div class="contenido">
@@ -228,7 +351,12 @@ style="left:180px;top:500px;width:160px;height:120px;">
 
 
 
+
+
 </div>
+
+</div>
+
 
 
 
@@ -261,6 +389,7 @@ from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 
 
+
 const firebaseConfig={
 
 
@@ -285,13 +414,20 @@ appId:"1:943639302610:web:5e747094f2f6151b70380b"
 
 const app=initializeApp(firebaseConfig);
 
+
 const database=getDatabase(app);
 
 
 
 
 
+
+
 const boxes=document.querySelectorAll(".box");
+
+
+
+
 
 
 
@@ -304,17 +440,27 @@ const contenido=box.querySelector(".contenido");
 
 const moveable=new Moveable(document.body,{
 
+
 target:box,
+
 
 draggable:true,
 
+
 resizable:true,
+
 
 keepRatio:false,
 
+
 origin:false
 
+
+
 });
+
+
+
 
 
 
@@ -325,10 +471,14 @@ moveable.on("drag",e=>{
 
 box.style.left=e.left+"px";
 
+
 box.style.top=e.top+"px";
 
 
+
 });
+
+
 
 
 
@@ -340,11 +490,13 @@ moveable.on("resize",e=>{
 
 box.style.width=e.width+"px";
 
+
 box.style.height=e.height+"px";
 
 
 
 let escalaX=e.width/500;
+
 
 let escalaY=e.height/300;
 
@@ -366,6 +518,9 @@ contenido.style.transform=
 
 
 
+
+
+
 document.getElementById("guardar").onclick=()=>{
 
 
@@ -381,11 +536,15 @@ diseño[box.id]={
 
 left:box.style.left,
 
+
 top:box.style.top,
+
 
 width:box.style.width,
 
+
 height:box.style.height
+
 
 
 };
@@ -393,15 +552,20 @@ height:box.style.height
 
 
 });
+
+
 
 
 
 
 set(ref(database,"diseño"),diseño)
 
+
 .then(()=>{
 
-alert("Diseño guardado");
+
+alert("✅ Diseño guardado correctamente");
+
 
 });
 
@@ -410,7 +574,10 @@ alert("Diseño guardado");
 
 
 
+
+
 </script>
+
 
 
 </body>
