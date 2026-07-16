@@ -11,6 +11,7 @@
 
 <style>
 
+
 html,body{
 
 margin:0;
@@ -26,6 +27,7 @@ overflow:hidden;
 }
 
 
+
 /* LIENZO 9:16 */
 
 #canvas{
@@ -33,9 +35,11 @@ overflow:hidden;
 position:relative;
 
 width:56.25vh;
+
 height:100vh;
 
 max-width:100vw;
+
 max-height:177.78vw;
 
 margin:auto;
@@ -44,7 +48,35 @@ margin:auto;
 
 
 
-/* ELEMENTOS MOVIBLES */
+/* MARCO DE GUÍA */
+
+#marco{
+
+position:absolute;
+
+top:0;
+
+left:0;
+
+width:100%;
+
+height:100%;
+
+border:3px solid white;
+
+box-sizing:border-box;
+
+pointer-events:none;
+
+z-index:500;
+
+}
+
+
+
+
+
+/* ELEMENTOS */
 
 .box{
 
@@ -54,11 +86,12 @@ position:absolute;
 
 
 
-/* CONTENIDO */
+
 
 iframe{
 
 width:100%;
+
 height:100%;
 
 border:none;
@@ -71,54 +104,29 @@ pointer-events:none;
 
 
 
-/* POSICIONES INICIALES */
 
 
-#box1{
-
-top:5%;
-left:5%;
-
-width:45%;
-height:15%;
-
-}
+/* BOTÓN GUARDAR */
 
 
+#guardar{
 
-#box2{
+position:fixed;
 
-top:5%;
-right:5%;
+top:10px;
 
-width:45%;
-height:15%;
+left:10px;
+
+padding:12px;
+
+font-size:16px;
+
+z-index:999;
 
 }
 
 
 
-#box3{
-
-bottom:20%;
-left:5%;
-
-width:45%;
-height:15%;
-
-}
-
-
-
-#box4{
-
-bottom:5%;
-right:5%;
-
-width:45%;
-height:20%;
-
-}
 
 
 </style>
@@ -127,140 +135,178 @@ height:20%;
 </head>
 
 
+
 <body>
+
+
+
+<button id="guardar">
+GUARDAR DISEÑO
+</button>
+
+
 
 
 <div id="canvas">
 
 
-<div class="box" id="box1">
-
-<iframe src="https://tikfinity.zerody.one/widget/topliker?cid=2357749"></iframe>
-
-</div>
+<div id="marco"></div>
 
 
 
-<div class="box" id="box2">
 
-<iframe src="https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749"></iframe>
+<div class="box" id="box1"
+style="left:5%;top:5%;width:45%;height:15%;">
 
-</div>
-
-
-
-<div class="box" id="box3">
-
-<iframe src="https://tikfinity.zerody.one/widget/userinfo?cid=2357749"></iframe>
+<iframe src="https://tikfinity.zerody.one/widget/topliker?cid=2357749">
+</iframe>
 
 </div>
 
 
 
-<div class="box" id="box4">
 
-<iframe src="https://tikfinity.zerody.one/widget/carousel?cid=2357749"></iframe>
+
+<div class="box" id="box2"
+style="right:5%;top:5%;width:45%;height:15%;">
+
+<iframe src="https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749">
+</iframe>
 
 </div>
 
 
+
+
+
+<div class="box" id="box3"
+style="left:5%;bottom:20%;width:45%;height:15%;">
+
+<iframe src="https://tikfinity.zerody.one/widget/userinfo?cid=2357749">
+</iframe>
+
 </div>
+
+
+
+
+
+<div class="box" id="box4"
+style="right:5%;bottom:5%;width:45%;height:20%;">
+
+<iframe src="https://tikfinity.zerody.one/widget/carousel?cid=2357749">
+</iframe>
+
+</div>
+
+
+
+</div>
+
+
+
 
 
 
 <script>
 
 
-const boxes = document.querySelectorAll(".box");
+const boxes=document.querySelectorAll(".box");
 
 
 
-// CARGAR DISEÑO GUARDADO
-
-boxes.forEach((box)=>{
 
 
-const saved = localStorage.getItem(box.id);
+/* CARGAR CONFIGURACIÓN DESDE LINK */
+
+
+const params=new URLSearchParams(window.location.search);
+
+
+
+boxes.forEach(box=>{
+
+
+let saved=params.get(box.id);
+
 
 
 if(saved){
 
 
-const data = JSON.parse(saved);
+let data=JSON.parse(atob(saved));
 
 
-box.style.left = data.left;
+box.style.left=data.left;
 
-box.style.top = data.top;
+box.style.top=data.top;
 
-box.style.width = data.width;
+box.style.width=data.width;
 
-box.style.height = data.height;
+box.style.height=data.height;
 
-box.style.transform = data.transform || "";
-
+box.style.transform=data.transform;
 
 
 }
 
 
 
+});
 
-const moveable = new Moveable(document.body,{
+
+
+
+
+
+
+/* EDITOR */
+
+
+boxes.forEach(box=>{
+
+
+const moveable=new Moveable(document.body,{
 
 
 target:box,
 
-
 draggable:true,
 
-
 resizable:true,
-
 
 keepRatio:false
 
 
-
-});
-
-
-
-
-// MOVER
-
-moveable.on("drag", e=>{
-
-
-e.target.style.transform = e.transform;
-
-
-guardar(box);
-
-
 });
 
 
 
 
 
-// CAMBIAR TAMAÑO
+
+moveable.on("drag",e=>{
 
 
-moveable.on("resize", e=>{
-
-
-e.target.style.width = e.width + "px";
-
-
-e.target.style.height = e.height + "px";
-
-
-guardar(box);
+e.target.style.transform=e.transform;
 
 
 });
 
+
+
+
+
+
+moveable.on("resize",e=>{
+
+
+e.target.style.width=e.width+"px";
+
+e.target.style.height=e.height+"px";
+
+
+});
 
 
 
@@ -270,41 +316,56 @@ guardar(box);
 
 
 
-// GUARDAR DISEÑO
 
 
-function guardar(box){
+/* GENERAR ENLACE */
+
+
+document.getElementById("guardar").onclick=()=>{
+
+
+let url=location.origin+location.pathname+"?";
 
 
 
-const data={
+boxes.forEach(box=>{
+
+
+let data={
 
 
 left:box.style.left,
 
-
 top:box.style.top,
-
 
 width:box.style.width,
 
-
 height:box.style.height,
 
-
-transform:box.style.transform
-
+transform:box.style.transform || ""
 
 
 };
 
 
 
-localStorage.setItem(box.id,JSON.stringify(data));
+url += box.id+"="+btoa(JSON.stringify(data))+"&";
 
 
 
-}
+});
+
+
+
+prompt(
+"Copia este enlace para PRISM Live:",
+url
+);
+
+
+
+};
+
 
 
 
