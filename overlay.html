@@ -28,10 +28,12 @@ html,body{
   overflow:hidden;
 }
 iframe{
-  width:100%; height:100%;
+  position:absolute;
+  left:0; top:0;
   border:none;
   background:transparent;
   pointer-events:none;
+  transform-origin:top left;
 }
 </style>
 </head>
@@ -58,7 +60,8 @@ function ajustarCanvas(){
 window.addEventListener("resize", ajustarCanvas);
 ajustarCanvas();
 
-// CREA UNA CAJA CON SU IFRAME A PARTIR DE LOS DATOS GUARDADOS
+// CREA UNA CAJA CON SU IFRAME A PARTIR DE LOS DATOS GUARDADOS,
+// aplicando el mismo zoom de contenido que se calculó en el editor
 function crearBox(id, datos){
   const box = document.createElement("div");
   box.className = "box";
@@ -69,8 +72,16 @@ function crearBox(id, datos){
   box.style.height = datos.height;
 
   if(datos.link){
+    const baseWidth = parseFloat(datos.baseWidth) || parseFloat(datos.width) || 400;
+    const baseHeight = parseFloat(datos.baseHeight) || parseFloat(datos.height) || 150;
+    const width = parseFloat(datos.width);
+    const height = parseFloat(datos.height);
+
     const iframe = document.createElement("iframe");
     iframe.src = datos.link;
+    iframe.style.width = baseWidth + "px";
+    iframe.style.height = baseHeight + "px";
+    iframe.style.transform = `scale(${width / baseWidth}, ${height / baseHeight})`;
     box.appendChild(iframe);
   }
 
@@ -91,4 +102,3 @@ iniciar();
 </script>
 </body>
 </html>
-
