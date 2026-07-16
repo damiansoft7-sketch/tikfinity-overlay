@@ -12,7 +12,6 @@
 
 <style>
 
-
 html,body{
 
 margin:0;
@@ -29,11 +28,9 @@ overflow:hidden;
 
 
 
-
 #vista{
 
 width:100vw;
-
 height:100vh;
 
 display:flex;
@@ -47,9 +44,6 @@ overflow:hidden;
 }
 
 
-
-
-/* LIENZO REAL 9:16 */
 
 #canvas{
 
@@ -66,8 +60,6 @@ transform-origin:center;
 
 
 
-
-/* IMAGEN GUIA */
 
 #guia{
 
@@ -93,67 +85,23 @@ pointer-events:none;
 
 
 
-/* BORDE */
-
-#marco{
-
-position:absolute;
-
-left:0;
-
-top:0;
-
-width:100%;
-
-height:100%;
-
-border:8px solid white;
-
-box-sizing:border-box;
-
-pointer-events:none;
-
-z-index:20;
-
-}
-
-
-
-
-
-/* ZONA SEGURA */
-
-#zona{
-
-position:absolute;
-
-left:50px;
-
-top:150px;
-
-width:980px;
-
-height:1520px;
-
-border:5px dashed rgba(255,255,255,.5);
-
-pointer-events:none;
-
-z-index:15;
-
-}
-
-
-
-
-
 .box{
 
 position:absolute;
 
 overflow:hidden;
 
+border:2px dashed transparent;
+
 z-index:10;
+
+}
+
+
+
+.box.seleccionado{
+
+border:2px dashed yellow;
 
 }
 
@@ -168,37 +116,42 @@ height:100%;
 
 border:none;
 
-background:transparent;
-
 pointer-events:none;
 
 }
 
 
 
-
-
-#guardar{
+#menu{
 
 position:fixed;
 
-top:15px;
+top:10px;
 
-left:15px;
+left:10px;
 
 z-index:999;
-
-padding:12px;
 
 }
 
 
 
+button{
+
+padding:10px;
+
+margin:3px;
+
+cursor:pointer;
+
+}
+
+
 
 </style>
 
-</head>
 
+</head>
 
 
 
@@ -206,11 +159,30 @@ padding:12px;
 
 
 
-<button id="guardar">
+<div id="menu">
 
-GUARDAR DISEÑO
+<button id="agregar">
+
+➕ Agregar
 
 </button>
+
+
+<button id="eliminar">
+
+🗑 Eliminar
+
+</button>
+
+
+<button id="guardar">
+
+💾 Guardar
+
+</button>
+
+</div>
+
 
 
 
@@ -221,73 +193,15 @@ GUARDAR DISEÑO
 <div id="canvas">
 
 
-
 <img id="guia" src="guia.jpeg">
 
 
 
-<div id="marco"></div>
-
-<div id="zona"></div>
-
-
-
-
-
-
-<div class="box" id="box1"
-style="left:50px;top:200px;width:400px;height:150px;">
-
-
-<iframe src="https://tikfinity.zerody.one/widget/topliker?cid=2357749"></iframe>
+</div>
 
 
 </div>
 
-
-
-
-
-<div class="box" id="box2"
-style="left:630px;top:200px;width:400px;height:150px;">
-
-
-<iframe src="https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749"></iframe>
-
-
-</div>
-
-
-
-
-
-<div class="box" id="box3"
-style="left:50px;top:1500px;width:400px;height:150px;">
-
-
-<iframe src="https://tikfinity.zerody.one/widget/userinfo?cid=2357749"></iframe>
-
-
-</div>
-
-
-
-
-
-<div class="box" id="box4"
-style="left:630px;top:1550px;width:400px;height:200px;">
-
-
-<iframe src="https://tikfinity.zerody.one/widget/carousel?cid=2357749"></iframe>
-
-
-</div>
-
-
-
-</div>
-
-</div>
 
 
 
@@ -309,7 +223,9 @@ getDatabase,
 
 ref,
 
-set
+set,
+
+get
 
 }
 
@@ -341,24 +257,32 @@ appId:"1:943639302610:web:5e747094f2f6151b70380b"
 
 
 
-
 initializeApp(firebaseConfig);
 
 
-const database=getDatabase();
+const db=getDatabase();
 
 
 
-
-
-// AJUSTAR EDITOR AL MONITOR
-
-
-function ajustarEditor(){
 
 
 const canvas=document.getElementById("canvas");
 
+
+let seleccionado=null;
+
+let contador=0;
+
+
+
+
+
+
+
+// AJUSTAR EDITOR
+
+
+function ajustar(){
 
 let escala=Math.min(
 
@@ -369,21 +293,64 @@ let escala=Math.min(
 );
 
 
-
 canvas.style.transform=`scale(${escala})`;
-
 
 }
 
 
+window.addEventListener("resize",ajustar);
 
-window.addEventListener("resize",ajustarEditor);
-
-
-ajustarEditor();
+ajustar();
 
 
 
+
+
+
+
+// CREAR ELEMENTO
+
+
+function crearElemento(url,id){
+
+
+
+let box=document.createElement("div");
+
+
+box.className="box";
+
+
+box.id=id;
+
+
+
+box.style.left="340px";
+
+box.style.top="800px";
+
+box.style.width="400px";
+
+box.style.height="200px";
+
+
+
+box.innerHTML=`
+
+<iframe src="${url}"></iframe>
+
+`;
+
+
+
+canvas.appendChild(box);
+
+
+
+activarMovimiento(box);
+
+
+}
 
 
 
@@ -391,11 +358,8 @@ ajustarEditor();
 // MOVER Y CAMBIAR TAMAÑO
 
 
-const boxes=document.querySelectorAll(".box");
+function activarMovimiento(box){
 
-
-
-boxes.forEach(box=>{
 
 
 new Moveable(document.body,{
@@ -407,6 +371,16 @@ draggable:true,
 resizable:true,
 
 origin:false
+
+})
+
+
+
+.on("click",()=>{
+
+
+seleccionar(box);
+
 
 })
 
@@ -435,7 +409,36 @@ box.style.height=e.height+"px";
 });
 
 
-});
+
+
+box.onclick=()=>{
+
+seleccionar(box);
+
+};
+
+
+}
+
+
+
+
+
+function seleccionar(box){
+
+
+document.querySelectorAll(".box")
+
+.forEach(x=>x.classList.remove("seleccionado"));
+
+
+box.classList.add("seleccionado");
+
+
+seleccionado=box;
+
+
+}
 
 
 
@@ -443,21 +446,87 @@ box.style.height=e.height+"px";
 
 
 
-// GUARDAR
+// AGREGAR
 
 
-document.getElementById("guardar").onclick=()=>{
+document.getElementById("agregar").onclick=()=>{
+
+
+let url=prompt(
+
+"Pegue el link del widget TikFinity"
+
+);
+
+
+
+if(!url)return;
+
+
+
+contador++;
+
+
+crearElemento(
+
+url,
+
+"elemento_"+contador
+
+);
+
+
+};
+
+
+
+
+
+
+// ELIMINAR
+
+
+document.getElementById("eliminar").onclick=()=>{
+
+
+if(seleccionado){
+
+
+seleccionado.remove();
+
+
+seleccionado=null;
+
+
+}
+
+};
+
+
+
+
+
+
+
+// GUARDAR FIREBASE
+
+
+document.getElementById("guardar").onclick=async()=>{
 
 
 let diseño={};
 
 
 
-boxes.forEach(box=>{
+document.querySelectorAll(".box")
+
+.forEach(box=>{
 
 
 diseño[box.id]={
 
+
+url:box.querySelector("iframe").src,
 
 left:box.style.left,
 
@@ -478,15 +547,17 @@ height:box.style.height
 
 
 
-set(ref(database,"diseño"),diseño)
+await set(
 
-.then(()=>{
+ref(db,"diseño"),
+
+diseño
+
+);
 
 
-alert("✅ Diseño guardado correctamente");
 
-
-});
+alert("Diseño guardado");
 
 
 
@@ -494,8 +565,59 @@ alert("✅ Diseño guardado correctamente");
 
 
 
-</script>
 
+
+
+
+
+
+// CARGAR DISEÑO EXISTENTE
+
+
+const datos=await get(ref(db,"diseño"));
+
+
+
+if(datos.exists()){
+
+
+let diseño=datos.val();
+
+
+
+Object.keys(diseño).forEach(id=>{
+
+
+let d=diseño[id];
+
+
+crearElemento(d.url,id);
+
+
+
+let box=document.getElementById(id);
+
+
+
+box.style.left=d.left;
+
+box.style.top=d.top;
+
+box.style.width=d.width;
+
+box.style.height=d.height;
+
+
+
+});
+
+
+
+}
+
+
+
+</script>
 
 
 </body>
