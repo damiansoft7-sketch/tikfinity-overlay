@@ -59,10 +59,12 @@ html,body{
   outline-offset:2px;
 }
 iframe{
-  width:100%; height:100%;
+  position:absolute;
+  left:0; top:0;
   border:none;
   background:transparent;
   pointer-events:none;
+  transform-origin:top left;
 }
 
 /* PANEL DE BOTONES */
@@ -109,16 +111,16 @@ import { database, ref, set, get } from "./firebase.js";
 const canvas = document.getElementById("canvas");
 
 // Datos iniciales por defecto (se usan si en Firebase no hay nada guardado todavía)
+// baseWidth/baseHeight = tamaño "natural" del widget, usado para calcular el zoom
 const cajasPorDefecto = {
-  box1: { left:"50px",  top:"200px",  width:"400px", height:"150px", link:"https://tikfinity.zerody.one/widget/topliker?cid=2357749" },
-  box2: { left:"630px", top:"200px",  width:"400px", height:"150px", link:"https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749" },
-  box3: { left:"50px",  top:"1500px", width:"400px", height:"150px", link:"https://tikfinity.zerody.one/widget/userinfo?cid=2357749" },
-  box4: { left:"630px", top:"1550px", width:"400px", height:"200px", link:"https://tikfinity.zerody.one/widget/carousel?cid=2357749" }
+  box1: { left:"50px",  top:"200px",  width:"400px", height:"150px", baseWidth:400, baseHeight:150, link:"https://tikfinity.zerody.one/widget/topliker?cid=2357749" },
+  box2: { left:"630px", top:"200px",  width:"400px", height:"150px", baseWidth:400, baseHeight:150, link:"https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749" },
+  box3: { left:"50px",  top:"1500px", width:"400px", height:"150px", baseWidth:400, baseHeight:150, link:"https://tikfinity.zerody.one/widget/userinfo?cid=2357749" },
+  box4: { left:"630px", top:"1550px", width:"400px", height:"200px", baseWidth:400, baseHeight:200, link:"https://tikfinity.zerody.one/widget/carousel?cid=2357749" }
 };
 
 const moveables = {};   // guarda la instancia de Moveable de cada caja (por id)
 let seleccionada = null; // referencia a la caja actualmente seleccionada
-let contador = 1;         // para generar ids únicos de cajas nuevas
 
 // ESCALAR EL EDITOR AL MONITOR
 function ajustarEditor(){
@@ -131,6 +133,20 @@ function ajustarEditor(){
 window.addEventListener("resize", ajustarEditor);
 ajustarEditor();
 
+// RECALCULA EL ZOOM DEL CONTENIDO DEL IFRAME SEGÚN EL TAMAÑO ACTUAL DE LA CAJA
+function actualizarEscalaContenido(box){
+  const iframe = box.querySelector("iframe");
+  if(!iframe) return;
+  const baseWidth = parseFloat(box.dataset.baseWidth) || 400;
+  const baseHeight = parseFloat(box.dataset.baseHeight) || 150;
+  const width = parseFloat(box.style.width);
+  const height = parseFloat(box.style.height);
+
+  iframe.style.width = baseWidth + "px";
+  iframe.style.height = baseHeight + "px";
+  iframe.style.transform = `scale(${width / baseWidth}, ${height / baseHeight})`;
+}
+
 // CREA UNA CAJA (usada tanto para las iniciales como para las nuevas)
 function crearBox(id, datos){
   const box = document.createElement("div");
@@ -140,11 +156,15 @@ function crearBox(id, datos){
   box.style.top = datos.top;
   box.style.width = datos.width;
   box.style.height = datos.height;
+  box.dataset.baseWidth = datos.baseWidth || parseInt(datos.width) || 400;
+  box.dataset.baseHeight = datos.baseHeight || parseInt(datos.height) || 150;
 
   const iframe = document.createElement("iframe");
   iframe.src = datos.link || "";
   box.appendChild(iframe);
   canvas.appendChild(box);
+
+  actualizarEscalaContenido(box);
 
   // Seleccionar caja al hacer click (para poder eliminarla luego)
   box.addEventListener("click", (e)=>{
@@ -171,6 +191,7 @@ function activarMoveable(box){
   .on("resize", e=>{
     box.style.width = e.width + "px";
     box.style.height = e.height + "px";
+    actualizarEscalaContenido(box);
   });
   moveables[box.id] = m;
 }
@@ -195,14 +216,15 @@ document.getElementById("agregar").onclick = ()=>{
   const link = prompt("Pega el enlace (URL) del widget de Tikfinity:");
   if(!link) return;
 
-  contador++;
-  const id = "box_" + Date.now() + "_" + contador;
+  const id = "box_" + Date.now();
 
   crearBox(id, {
     left:"100px",
     top:"100px",
     width:"400px",
     height:"150px",
+    baseWidth:400,
+    baseHeight:150,
     link: link
   });
 };
@@ -232,6 +254,8 @@ document.getElementById("guardar").onclick = ()=>{
       top: box.style.top,
       width: box.style.width,
       height: box.style.height,
+      baseWidth: parseFloat(box.dataset.baseWidth),
+      baseHeight: parseFloat(box.dataset.baseHeight),
       link: iframe ? iframe.src : ""
     };
   });
