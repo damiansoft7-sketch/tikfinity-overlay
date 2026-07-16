@@ -122,6 +122,12 @@ const cajasPorDefecto = {
 const moveables = {};   // guarda la instancia de Moveable de cada caja (por id)
 let seleccionada = null; // referencia a la caja actualmente seleccionada
 
+// Tamaño de referencia por defecto para calcular el zoom del contenido.
+// OJO: esto NO debe salir del ancho/alto ya guardado (eso causaba el bug
+// de que el zoom siempre quedara en 1). Es un valor fijo.
+const BASE_WIDTH_DEFAULT = 400;
+const BASE_HEIGHT_DEFAULT = 150;
+
 // ESCALAR EL EDITOR AL MONITOR
 function ajustarEditor(){
   let escala = Math.min(
@@ -156,8 +162,8 @@ function crearBox(id, datos){
   box.style.top = datos.top;
   box.style.width = datos.width;
   box.style.height = datos.height;
-  box.dataset.baseWidth = datos.baseWidth || parseInt(datos.width) || 400;
-  box.dataset.baseHeight = datos.baseHeight || parseInt(datos.height) || 150;
+  box.dataset.baseWidth = datos.baseWidth || BASE_WIDTH_DEFAULT;
+  box.dataset.baseHeight = datos.baseHeight || BASE_HEIGHT_DEFAULT;
 
   const iframe = document.createElement("iframe");
   iframe.src = datos.link || "";
