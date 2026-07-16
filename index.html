@@ -4,12 +4,9 @@
 <head>
 
 <meta charset="UTF-8">
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-
 <script src="https://daybrush.com/moveable/release/latest/dist/moveable.min.js"></script>
-
 
 <style>
 
@@ -26,7 +23,6 @@ background:#222;
 overflow:hidden;
 
 }
-
 
 
 /* LIENZO 9:16 */
@@ -49,16 +45,14 @@ margin:auto;
 
 
 
-/* BORDE */
+/* MARCO */
 
 #marco{
 
 position:absolute;
 
-left:0;
-top:0;
-
 width:100%;
+
 height:100%;
 
 border:3px solid white;
@@ -67,20 +61,40 @@ box-sizing:border-box;
 
 pointer-events:none;
 
-z-index:20;
+z-index:100;
 
 }
 
 
 
+
+
+/* CONTENEDORES */
 
 .box{
 
 position:absolute;
 
-z-index:5;
+overflow:hidden;
 
 }
+
+
+
+
+
+/* ESCALADOR */
+
+.scale{
+
+width:100%;
+
+height:100%;
+
+transform-origin:top left;
+
+}
+
 
 
 
@@ -96,6 +110,8 @@ border:none;
 background:transparent;
 
 pointer-events:none;
+
+display:block;
 
 }
 
@@ -117,16 +133,12 @@ z-index:999;
 }
 
 
-
 </style>
-
 
 </head>
 
 
-
 <body>
-
 
 
 <button id="guardar">
@@ -149,7 +161,13 @@ GUARDAR DISEÑO
 <div class="box" id="box1"
 style="left:5%;top:5%;width:40%;height:12%;">
 
+
+<div class="scale">
+
 <iframe src="https://tikfinity.zerody.one/widget/topliker?cid=2357749"></iframe>
+
+</div>
+
 
 </div>
 
@@ -160,9 +178,16 @@ style="left:5%;top:5%;width:40%;height:12%;">
 <div class="box" id="box2"
 style="left:55%;top:5%;width:40%;height:12%;">
 
+
+<div class="scale">
+
 <iframe src="https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749"></iframe>
 
 </div>
+
+
+</div>
+
 
 
 
@@ -171,9 +196,17 @@ style="left:55%;top:5%;width:40%;height:12%;">
 <div class="box" id="box3"
 style="left:5%;top:75%;width:40%;height:12%;">
 
+
+<div class="scale">
+
 <iframe src="https://tikfinity.zerody.one/widget/userinfo?cid=2357749"></iframe>
 
 </div>
+
+
+</div>
+
+
 
 
 
@@ -182,9 +215,16 @@ style="left:5%;top:75%;width:40%;height:12%;">
 <div class="box" id="box4"
 style="left:55%;top:75%;width:40%;height:15%;">
 
+
+<div class="scale">
+
 <iframe src="https://tikfinity.zerody.one/widget/carousel?cid=2357749"></iframe>
 
 </div>
+
+
+</div>
+
 
 
 
@@ -205,7 +245,6 @@ import { initializeApp }
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
 
-
 import {
 
 getDatabase,
@@ -217,6 +256,7 @@ set
 }
 
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
 
 
 
@@ -240,7 +280,6 @@ messagingSenderId:"943639302610",
 
 appId:"1:943639302610:web:5e747094f2f6151b70380b"
 
-
 };
 
 
@@ -262,10 +301,11 @@ const boxes=document.querySelectorAll(".box");
 
 
 
+
 boxes.forEach(box=>{
 
 
-const moveable=new Moveable(document.body,{
+new Moveable(document.body,{
 
 target:box,
 
@@ -273,23 +313,18 @@ draggable:true,
 
 resizable:true,
 
-scalable:true,
-
 keepRatio:false,
 
 origin:false
 
 
-});
+})
 
 
 
 
 
-
-// MOVER
-
-moveable.on("drag",e=>{
+.on("drag",e=>{
 
 
 e.target.style.left=e.left+"px";
@@ -297,36 +332,23 @@ e.target.style.left=e.left+"px";
 e.target.style.top=e.top+"px";
 
 
-});
+})
 
 
 
 
 
 
-
-// CAMBIAR TAMAÑO
-
-moveable.on("resize",e=>{
+.on("resize",e=>{
 
 
-const target=e.target;
+e.target.style.width=e.width+"px";
 
+e.target.style.height=e.height+"px";
 
-target.style.width=e.width+"px";
-
-target.style.height=e.height+"px";
-
-
-
-target.style.left=e.drag.left+"px";
-
-target.style.top=e.drag.top+"px";
 
 
 });
-
-
 
 
 
@@ -338,9 +360,6 @@ target.style.top=e.drag.top+"px";
 
 
 
-
-
-// GUARDAR FIREBASE
 
 
 document.getElementById("guardar").onclick=()=>{
@@ -357,19 +376,21 @@ boxes.forEach(box=>{
 diseño[box.id]={
 
 
-left:box.offsetLeft+"px",
+left:box.style.left,
 
-top:box.offsetTop+"px",
+top:box.style.top,
 
-width:box.offsetWidth+"px",
+width:box.style.width,
 
-height:box.offsetHeight+"px"
+height:box.style.height
 
 
 };
 
 
+
 });
+
 
 
 
@@ -382,18 +403,20 @@ set(ref(database,"diseño"),diseño)
 .then(()=>{
 
 
-alert("✅ Diseño guardado correctamente");
+alert("✅ Diseño guardado");
 
 
 })
 
+
 .catch(error=>{
 
 
-alert("Error: "+error.message);
+alert(error.message);
 
 
 });
+
 
 
 };
@@ -402,8 +425,8 @@ alert("Error: "+error.message);
 
 
 
-</script>
 
+</script>
 
 
 </body>
