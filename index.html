@@ -67,6 +67,24 @@ iframe{
   transform-origin:top left;
 }
 
+/* CAJA DE TEXTO */
+.texto-contenido{
+  width:100%;
+  height:100%;
+  background:#000;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  box-sizing:border-box;
+  padding:10px;
+  font-size:48px;
+  font-weight:bold;
+  word-break:break-word;
+  line-height:1.2;
+}
+
 /* PANEL DE BOTONES */
 #panel{
   position:fixed;
@@ -85,6 +103,7 @@ iframe{
 }
 #guardar{ background:#2196F3; color:white; }
 #agregar{ background:#4CAF50; color:white; }
+#agregarTexto{ background:#000; color:white; border:2px solid white; }
 #eliminar{ background:#f44336; color:white; }
 </style>
 </head>
@@ -93,6 +112,7 @@ iframe{
 <div id="panel">
   <button id="guardar">GUARDAR DISEÑO</button>
   <button id="agregar">➕ AGREGAR ELEMENTO</button>
+  <button id="agregarTexto">🔤 AGREGAR TEXTO</button>
   <button id="eliminar">🗑 ELIMINAR SELECCIONADO</button>
 </div>
 
@@ -111,20 +131,16 @@ import { database, ref, set, get } from "./firebase.js";
 const canvas = document.getElementById("canvas");
 
 // Datos iniciales por defecto (se usan si en Firebase no hay nada guardado todavía)
-// baseWidth/baseHeight = tamaño "natural" del widget, usado para calcular el zoom
 const cajasPorDefecto = {
-  box1: { left:"50px",  top:"200px",  width:"400px", height:"150px", baseWidth:400, baseHeight:150, link:"https://tikfinity.zerody.one/widget/topliker?cid=2357749" },
-  box2: { left:"630px", top:"200px",  width:"400px", height:"150px", baseWidth:400, baseHeight:150, link:"https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749" },
-  box3: { left:"50px",  top:"1500px", width:"400px", height:"150px", baseWidth:400, baseHeight:150, link:"https://tikfinity.zerody.one/widget/userinfo?cid=2357749" },
-  box4: { left:"630px", top:"1550px", width:"400px", height:"200px", baseWidth:400, baseHeight:200, link:"https://tikfinity.zerody.one/widget/carousel?cid=2357749" }
+  box1: { tipo:"iframe", left:"50px",  top:"200px",  width:"400px", height:"150px", baseWidth:400, baseHeight:150, link:"https://tikfinity.zerody.one/widget/topliker?cid=2357749" },
+  box2: { tipo:"iframe", left:"630px", top:"200px",  width:"400px", height:"150px", baseWidth:400, baseHeight:150, link:"https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749" },
+  box3: { tipo:"iframe", left:"50px",  top:"1500px", width:"400px", height:"150px", baseWidth:400, baseHeight:150, link:"https://tikfinity.zerody.one/widget/userinfo?cid=2357749" },
+  box4: { tipo:"iframe", left:"630px", top:"1550px", width:"400px", height:"200px", baseWidth:400, baseHeight:200, link:"https://tikfinity.zerody.one/widget/carousel?cid=2357749" }
 };
 
 const moveables = {};   // guarda la instancia de Moveable de cada caja (por id)
 let seleccionada = null; // referencia a la caja actualmente seleccionada
 
-// Tamaño de referencia por defecto para calcular el zoom del contenido.
-// OJO: esto NO debe salir del ancho/alto ya guardado (eso causaba el bug
-// de que el zoom siempre quedara en 1). Es un valor fijo.
 const BASE_WIDTH_DEFAULT = 400;
 const BASE_HEIGHT_DEFAULT = 150;
 
@@ -153,11 +169,12 @@ function actualizarEscalaContenido(box){
   iframe.style.transform = `scale(${width / baseWidth}, ${height / baseHeight})`;
 }
 
-// CREA UNA CAJA (usada tanto para las iniciales como para las nuevas)
-function crearBox(id, datos){
+// CREA UNA CAJA DE IFRAME (widgets de Tikfinity, etc.)
+function crearBoxIframe(id, datos){
   const box = document.createElement("div");
   box.className = "box";
   box.id = id;
+  box.dataset.tipo = "iframe";
   box.style.left = datos.left;
   box.style.top = datos.top;
   box.style.width = datos.width;
@@ -172,28 +189,51 @@ function crearBox(id, datos){
 
   actualizarEscalaContenido(box);
 
-  // Seleccionar caja al hacer click (para poder eliminarla luego)
   box.addEventListener("click", (e)=>{
     e.stopPropagation();
     seleccionarBox(box);
   });
-
-  // Doble click: ajustar el tamaño "natural" del widget (por si se ve cortado)
-  // y opcionalmente cambiar el enlace
   box.addEventListener("dblclick", (e)=>{
     e.stopPropagation();
-    editarBox(box);
+    editarBoxIframe(box);
   });
 
   activarMoveable(box);
   return box;
 }
 
-// PERMITE AJUSTAR EL TAMAÑO NATURAL (baseWidth/baseHeight) Y EL LINK DE UNA CAJA
-// Útil cuando el widget se ve cortado: hay que agrandar su alto/ancho "natural"
-// hasta que se vea completo (el tamaño visible en pantalla lo sigue controlando
-// el arrastre normal con las esquinas celestes).
-function editarBox(box){
+// CREA UNA CAJA DE TEXTO (fondo negro, letra blanca)
+function crearBoxTexto(id, datos){
+  const box = document.createElement("div");
+  box.className = "box";
+  box.id = id;
+  box.dataset.tipo = "texto";
+  box.style.left = datos.left;
+  box.style.top = datos.top;
+  box.style.width = datos.width;
+  box.style.height = datos.height;
+
+  const contenido = document.createElement("div");
+  contenido.className = "texto-contenido";
+  contenido.textContent = datos.contenido || "Escribe tu texto";
+  box.appendChild(contenido);
+  canvas.appendChild(box);
+
+  box.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    seleccionarBox(box);
+  });
+  box.addEventListener("dblclick", (e)=>{
+    e.stopPropagation();
+    editarBoxTexto(box);
+  });
+
+  activarMoveable(box);
+  return box;
+}
+
+// EDITAR ENLACE/TAMAÑO NATURAL DE UNA CAJA IFRAME
+function editarBoxIframe(box){
   const anchoActual = box.dataset.baseWidth;
   const altoActual = box.dataset.baseHeight;
 
@@ -205,6 +245,21 @@ function editarBox(box){
   box.dataset.baseWidth = parseFloat(nuevoAncho) || anchoActual;
   box.dataset.baseHeight = parseFloat(nuevoAlto) || altoActual;
   actualizarEscalaContenido(box);
+}
+
+// EDITAR TEXTO DE UNA CAJA DE TEXTO -> se actualiza al instante en el overlay
+function editarBoxTexto(box){
+  const contenido = box.querySelector(".texto-contenido");
+  const actual = contenido.textContent;
+  const nuevo = prompt("Escribe el nuevo texto:", actual);
+  if(nuevo === null) return;
+
+  contenido.textContent = nuevo;
+
+  // Escribe directo en Firebase para que el overlay lo reciba EN VIVO,
+  // sin necesidad de presionar "GUARDAR DISEÑO"
+  set(ref(database, "textoLive/" + box.id), nuevo)
+    .catch(err => alert("❌ No se pudo actualizar el texto en vivo: " + err.message));
 }
 
 // ACTIVA ARRASTRE Y REDIMENSIONADO SOBRE UNA CAJA
@@ -222,7 +277,9 @@ function activarMoveable(box){
   .on("resize", e=>{
     box.style.width = e.width + "px";
     box.style.height = e.height + "px";
-    actualizarEscalaContenido(box);
+    if(box.dataset.tipo === "iframe"){
+      actualizarEscalaContenido(box);
+    }
   });
   moveables[box.id] = m;
 }
@@ -242,14 +299,14 @@ document.getElementById("vista").addEventListener("click", ()=>{
   }
 });
 
-// BOTÓN AGREGAR
+// BOTÓN AGREGAR (iframe / widget Tikfinity)
 document.getElementById("agregar").onclick = ()=>{
   const link = prompt("Pega el enlace (URL) del widget de Tikfinity:");
   if(!link) return;
 
   const id = "box_" + Date.now();
 
-  crearBox(id, {
+  crearBoxIframe(id, {
     left:"100px",
     top:"100px",
     width:"400px",
@@ -258,6 +315,26 @@ document.getElementById("agregar").onclick = ()=>{
     baseHeight:150,
     link: link
   });
+};
+
+// BOTÓN AGREGAR TEXTO
+document.getElementById("agregarTexto").onclick = ()=>{
+  const texto = prompt("Texto inicial de la caja:", "Escribe tu texto");
+  if(texto === null) return;
+
+  const id = "texto_" + Date.now();
+
+  crearBoxTexto(id, {
+    left:"150px",
+    top:"800px",
+    width:"780px",
+    height:"200px",
+    contenido: texto
+  });
+
+  // También lo deja disponible en tiempo real desde ya
+  set(ref(database, "textoLive/" + id), texto)
+    .catch(err => console.error("No se pudo inicializar textoLive:", err));
 };
 
 // BOTÓN ELIMINAR
@@ -279,16 +356,29 @@ document.getElementById("eliminar").onclick = ()=>{
 document.getElementById("guardar").onclick = ()=>{
   let diseño = {};
   document.querySelectorAll(".box").forEach(box=>{
-    const iframe = box.querySelector("iframe");
-    diseño[box.id] = {
-      left: box.style.left,
-      top: box.style.top,
-      width: box.style.width,
-      height: box.style.height,
-      baseWidth: parseFloat(box.dataset.baseWidth),
-      baseHeight: parseFloat(box.dataset.baseHeight),
-      link: iframe ? iframe.src : ""
-    };
+    if(box.dataset.tipo === "texto"){
+      const contenido = box.querySelector(".texto-contenido");
+      diseño[box.id] = {
+        tipo: "texto",
+        left: box.style.left,
+        top: box.style.top,
+        width: box.style.width,
+        height: box.style.height,
+        contenido: contenido.textContent
+      };
+    } else {
+      const iframe = box.querySelector("iframe");
+      diseño[box.id] = {
+        tipo: "iframe",
+        left: box.style.left,
+        top: box.style.top,
+        width: box.style.width,
+        height: box.style.height,
+        baseWidth: parseFloat(box.dataset.baseWidth),
+        baseHeight: parseFloat(box.dataset.baseHeight),
+        link: iframe ? iframe.src : ""
+      };
+    }
   });
   set(ref(database, "diseño"), diseño)
     .then(()=>{
@@ -304,7 +394,12 @@ async function iniciar(){
   const snapshot = await get(ref(database, "diseño"));
   const datos = snapshot.exists() ? snapshot.val() : cajasPorDefecto;
   Object.keys(datos).forEach(id=>{
-    crearBox(id, datos[id]);
+    const item = datos[id];
+    if(item.tipo === "texto"){
+      crearBoxTexto(id, item);
+    } else {
+      crearBoxIframe(id, item);
+    }
   });
 }
 iniciar();
