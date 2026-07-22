@@ -66,19 +66,6 @@ iframe{
   pointer-events:none;
   transform-origin:top left;
 }
-.texto-caja{
-  width:100%; height:100%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  color:#ffffff;
-  font-weight:bold;
-  text-shadow: 2px 2px 4px rgba(0,0,0,.8);
-  word-break:break-word;
-  padding:4px;
-  box-sizing:border-box;
-}
 
 /* PANEL DE BOTONES */
 #panel{
@@ -98,7 +85,6 @@ iframe{
 }
 #guardar{ background:#2196F3; color:white; }
 #agregar{ background:#4CAF50; color:white; }
-#agregarTexto{ background:#FF9800; color:white; }
 #eliminar{ background:#f44336; color:white; }
 </style>
 </head>
@@ -107,7 +93,6 @@ iframe{
 <div id="panel">
   <button id="guardar">GUARDAR DISEÑO</button>
   <button id="agregar">➕ AGREGAR ELEMENTO</button>
-  <button id="agregarTexto">📝 AGREGAR TEXTO</button>
   <button id="eliminar">🗑 ELIMINAR SELECCIONADO</button>
 </div>
 
@@ -121,7 +106,7 @@ iframe{
 </div>
 
 <script type="module">
-import { database, ref, set, get, onValue } from "./firebase.js";
+import { database, ref, set, get } from "./firebase.js";
 
 const canvas = document.getElementById("canvas");
 
@@ -169,8 +154,6 @@ function actualizarEscalaContenido(box){
 }
 
 // CREA UNA CAJA (usada tanto para las iniciales como para las nuevas)
-// Soporta dos tipos: "widget" (iframe de Tikfinity, comportamiento de siempre)
-// y "texto" (texto simple editable, se actualiza en vivo en el overlay)
 function crearBox(id, datos){
   const box = document.createElement("div");
   box.className = "box";
@@ -179,28 +162,15 @@ function crearBox(id, datos){
   box.style.top = datos.top;
   box.style.width = datos.width;
   box.style.height = datos.height;
+  box.dataset.baseWidth = datos.baseWidth || BASE_WIDTH_DEFAULT;
+  box.dataset.baseHeight = datos.baseHeight || BASE_HEIGHT_DEFAULT;
 
-  if(datos.type === "texto"){
-    box.dataset.type = "texto";
-    const contenido = document.createElement("div");
-    contenido.className = "texto-caja";
-    contenido.textContent = datos.texto || "";
-    contenido.style.fontSize = (datos.fontSize || 60) + "px";
-    contenido.style.color = datos.color || "#ffffff";
-    box.appendChild(contenido);
-    canvas.appendChild(box);
-  } else {
-    box.dataset.type = "widget";
-    box.dataset.baseWidth = datos.baseWidth || BASE_WIDTH_DEFAULT;
-    box.dataset.baseHeight = datos.baseHeight || BASE_HEIGHT_DEFAULT;
+  const iframe = document.createElement("iframe");
+  iframe.src = datos.link || "";
+  box.appendChild(iframe);
+  canvas.appendChild(box);
 
-    const iframe = document.createElement("iframe");
-    iframe.src = datos.link || "";
-    box.appendChild(iframe);
-    canvas.appendChild(box);
-
-    actualizarEscalaContenido(box);
-  }
+  actualizarEscalaContenido(box);
 
   // Seleccionar caja al hacer click (para poder eliminarla luego)
   box.addEventListener("click", (e)=>{
@@ -208,7 +178,8 @@ function crearBox(id, datos){
     seleccionarBox(box);
   });
 
-  // Doble click: editar la caja (texto o tamaño natural/link según el tipo)
+  // Doble click: ajustar el tamaño "natural" del widget (por si se ve cortado)
+  // y opcionalmente cambiar el enlace
   box.addEventListener("dblclick", (e)=>{
     e.stopPropagation();
     editarBox(box);
@@ -218,25 +189,11 @@ function crearBox(id, datos){
   return box;
 }
 
-// PERMITE AJUSTAR EL TAMAÑO NATURAL (baseWidth/baseHeight) Y EL LINK DE UNA CAJA DE WIDGET,
-// O EL TEXTO DE UNA CAJA DE TEXTO (y en ese caso lo guarda al instante en Firebase
-// para que se actualice en tiempo real en el overlay, sin necesitar Guardar Diseño)
+// PERMITE AJUSTAR EL TAMAÑO NATURAL (baseWidth/baseHeight) Y EL LINK DE UNA CAJA
+// Útil cuando el widget se ve cortado: hay que agrandar su alto/ancho "natural"
+// hasta que se vea completo (el tamaño visible en pantalla lo sigue controlando
+// el arrastre normal con las esquinas celestes).
 function editarBox(box){
-  if(box.dataset.type === "texto"){
-    const contenido = box.querySelector(".texto-caja");
-    const actual = contenido.textContent;
-    const nuevo = prompt("Escribe el texto a mostrar:", actual);
-    if(nuevo === null) return;
-    contenido.textContent = nuevo;
-
-    // Guarda SOLO el texto de esta caja en Firebase al instante (tiempo real)
-    set(ref(database, "diseño/" + box.id + "/texto"), nuevo)
-      .catch(err=>{
-        alert("❌ No se pudo actualizar el texto: " + err.message);
-      });
-    return;
-  }
-
   const anchoActual = box.dataset.baseWidth;
   const altoActual = box.dataset.baseHeight;
 
@@ -303,25 +260,6 @@ document.getElementById("agregar").onclick = ()=>{
   });
 };
 
-// BOTÓN AGREGAR TEXTO
-document.getElementById("agregarTexto").onclick = ()=>{
-  const texto = prompt("Escribe el texto a mostrar:");
-  if(texto === null || texto === "") return;
-
-  const id = "texto_" + Date.now();
-
-  crearBox(id, {
-    left:"100px",
-    top:"100px",
-    width:"400px",
-    height:"120px",
-    type:"texto",
-    texto: texto,
-    fontSize: 60,
-    color: "#ffffff"
-  });
-};
-
 // BOTÓN ELIMINAR
 document.getElementById("eliminar").onclick = ()=>{
   if(!seleccionada){
@@ -341,30 +279,16 @@ document.getElementById("eliminar").onclick = ()=>{
 document.getElementById("guardar").onclick = ()=>{
   let diseño = {};
   document.querySelectorAll(".box").forEach(box=>{
-    if(box.dataset.type === "texto"){
-      const contenido = box.querySelector(".texto-caja");
-      diseño[box.id] = {
-        left: box.style.left,
-        top: box.style.top,
-        width: box.style.width,
-        height: box.style.height,
-        type: "texto",
-        texto: contenido ? contenido.textContent : "",
-        fontSize: contenido ? parseFloat(contenido.style.fontSize) : 60,
-        color: contenido ? contenido.style.color : "#ffffff"
-      };
-    } else {
-      const iframe = box.querySelector("iframe");
-      diseño[box.id] = {
-        left: box.style.left,
-        top: box.style.top,
-        width: box.style.width,
-        height: box.style.height,
-        baseWidth: parseFloat(box.dataset.baseWidth),
-        baseHeight: parseFloat(box.dataset.baseHeight),
-        link: iframe ? iframe.src : ""
-      };
-    }
+    const iframe = box.querySelector("iframe");
+    diseño[box.id] = {
+      left: box.style.left,
+      top: box.style.top,
+      width: box.style.width,
+      height: box.style.height,
+      baseWidth: parseFloat(box.dataset.baseWidth),
+      baseHeight: parseFloat(box.dataset.baseHeight),
+      link: iframe ? iframe.src : ""
+    };
   });
   set(ref(database, "diseño"), diseño)
     .then(()=>{
