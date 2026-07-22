@@ -37,19 +37,6 @@ iframe{
   transform-origin:top left;
   will-change: transform;
 }
-.texto-caja{
-  width:100%; height:100%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  color:#ffffff;
-  font-weight:bold;
-  text-shadow: 2px 2px 4px rgba(0,0,0,.8);
-  word-break:break-word;
-  padding:4px;
-  box-sizing:border-box;
-}
 </style>
 </head>
 <body>
@@ -60,7 +47,7 @@ iframe{
 </div>
 
 <script type="module">
-import { database, ref, get, onValue } from "./firebase.js";
+import { database, ref, get } from "./firebase.js";
 
 const canvas = document.getElementById("canvas");
 
@@ -85,10 +72,8 @@ window.addEventListener("resize", ()=>{
 });
 ajustarCanvas();
 
-// CREA UNA CAJA A PARTIR DE LOS DATOS GUARDADOS.
-// Si es un widget (iframe), aplica el mismo zoom que se calculó en el editor.
-// Si es una caja de texto, se suscribe a Firebase en tiempo real (onValue)
-// para que el texto se actualice solo, sin recargar la página.
+// CREA UNA CAJA CON SU IFRAME A PARTIR DE LOS DATOS GUARDADOS,
+// aplicando el mismo zoom de contenido que se calculó en el editor
 function crearBox(id, datos){
   const box = document.createElement("div");
   box.className = "box";
@@ -98,25 +83,7 @@ function crearBox(id, datos){
   box.style.width = datos.width;
   box.style.height = datos.height;
 
-  if(datos.type === "texto"){
-    const contenido = document.createElement("div");
-    contenido.className = "texto-caja";
-    contenido.textContent = datos.texto || "";
-    contenido.style.fontSize = (datos.fontSize || 60) + "px";
-    contenido.style.color = datos.color || "#ffffff";
-    box.appendChild(contenido);
-    canvas.appendChild(box);
-
-    // Escucha en tiempo real SOLO el texto de esta caja.
-    // Cada vez que se actualice en Firebase (desde el editor), se refleja
-    // al instante acá, sin tocar el resto de los elementos del overlay.
-    onValue(ref(database, "diseño/" + id + "/texto"), (snap)=>{
-      if(snap.exists()){
-        contenido.textContent = snap.val();
-      }
-    });
-
-  } else if(datos.link){
+  if(datos.link){
     const baseWidth = parseFloat(datos.baseWidth) || 400;
     const baseHeight = parseFloat(datos.baseHeight) || 150;
     const width = parseFloat(datos.width);
@@ -128,10 +95,9 @@ function crearBox(id, datos){
     iframe.style.height = baseHeight + "px";
     iframe.style.transform = `scale(${width / baseWidth}, ${height / baseHeight})`;
     box.appendChild(iframe);
-    canvas.appendChild(box);
-  } else {
-    canvas.appendChild(box);
   }
+
+  canvas.appendChild(box);
 }
 
 // CARGAR POSICIONES Y ENLACES DESDE FIREBASE
