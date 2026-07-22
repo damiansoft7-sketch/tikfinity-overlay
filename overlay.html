@@ -37,6 +37,22 @@ iframe{
   transform-origin:top left;
   will-change: transform;
 }
+.texto-contenido{
+  width:100%;
+  height:100%;
+  background:#000;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  box-sizing:border-box;
+  padding:10px;
+  font-size:48px;
+  font-weight:bold;
+  word-break:break-word;
+  line-height:1.2;
+}
 </style>
 </head>
 <body>
@@ -45,12 +61,9 @@ iframe{
     <!-- Las cajas se generan dinámicamente desde Firebase -->
   </div>
 </div>
-
 <script type="module">
-import { database, ref, get } from "./firebase.js";
-
+import { database, ref, get, onValue } from "./firebase.js";
 const canvas = document.getElementById("canvas");
-
 // ESCALA EL LIENZO COMPLETO COMO 9:16
 let resizePendiente = false;
 function ajustarCanvas(){
@@ -60,8 +73,6 @@ function ajustarCanvas(){
   );
   canvas.style.transform = `scale(${escala})`;
 }
-// requestAnimationFrame evita que se recalcule más veces de las necesarias
-// si el resize se dispara muy seguido (ahorra CPU en sesiones largas)
 window.addEventListener("resize", ()=>{
   if(resizePendiente) return;
   resizePendiente = true;
@@ -72,9 +83,8 @@ window.addEventListener("resize", ()=>{
 });
 ajustarCanvas();
 
-// CREA UNA CAJA CON SU IFRAME A PARTIR DE LOS DATOS GUARDADOS,
-// aplicando el mismo zoom de contenido que se calculó en el editor
-function crearBox(id, datos){
+// CREA UNA CAJA DE IFRAME (widgets de Tikfinity, etc.)
+function crearBoxIframe(id, datos){
   const box = document.createElement("div");
   box.className = "box";
   box.id = id;
@@ -83,21 +93,43 @@ function crearBox(id, datos){
   box.style.width = datos.width;
   box.style.height = datos.height;
 
-  if(datos.link){
-    const baseWidth = parseFloat(datos.baseWidth) || 400;
-    const baseHeight = parseFloat(datos.baseHeight) || 150;
-    const width = parseFloat(datos.width);
-    const height = parseFloat(datos.height);
-
-    const iframe = document.createElement("iframe");
-    iframe.src = datos.link;
-    iframe.style.width = baseWidth + "px";
-    iframe.style.height = baseHeight + "px";
-    iframe.style.transform = `scale(${width / baseWidth}, ${height / baseHeight})`;
-    box.appendChild(iframe);
-  }
+  const baseWidth = parseFloat(datos.baseWidth) || 400;
+  const baseHeight = parseFloat(datos.baseHeight) || 150;
+  const width = parseFloat(datos.width);
+  const height = parseFloat(datos.height);
+  const iframe = document.createElement("iframe");
+  iframe.src = datos.link;
+  iframe.style.width = baseWidth + "px";
+  iframe.style.height = baseHeight + "px";
+  iframe.style.transform = `scale(${width / baseWidth}, ${height / baseHeight})`;
+  box.appendChild(iframe);
 
   canvas.appendChild(box);
+}
+
+// CREA UNA CAJA DE TEXTO Y ESCUCHA CAMBIOS EN TIEMPO REAL (fondo negro, letra blanca)
+function crearBoxTexto(id, datos){
+  const box = document.createElement("div");
+  box.className = "box";
+  box.id = id;
+  box.style.left = datos.left;
+  box.style.top = datos.top;
+  box.style.width = datos.width;
+  box.style.height = datos.height;
+
+  const contenido = document.createElement("div");
+  contenido.className = "texto-contenido";
+  contenido.textContent = datos.contenido || "";
+  box.appendChild(contenido);
+
+  canvas.appendChild(box);
+
+  // Escucha en tiempo real: apenas cambie el texto en Firebase, se actualiza aquí
+  onValue(ref(database, "textoLive/" + id), (snapshot)=>{
+    if(snapshot.exists()){
+      contenido.textContent = snapshot.val();
+    }
+  });
 }
 
 // CARGAR POSICIONES Y ENLACES DESDE FIREBASE
@@ -106,7 +138,12 @@ async function iniciar(){
   if(snapshot.exists()){
     const diseño = snapshot.val();
     Object.keys(diseño).forEach(id=>{
-      crearBox(id, diseño[id]);
+      const datos = diseño[id];
+      if(datos.tipo === "texto"){
+        crearBoxTexto(id, datos);
+      } else {
+        crearBoxIframe(id, datos);
+      }
     });
   }
 }
