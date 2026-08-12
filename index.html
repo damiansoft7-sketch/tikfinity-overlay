@@ -147,6 +147,18 @@ iframe{
 }
 #modalAplicar{ background:#4CAF50; color:white; }
 #modalCancelar{ background:#ccc; }
+
+#modalEditarCaja label{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:15px;
+}
+
+.box.es-contador{
+  outline:3px dashed #FF9800;
+  outline-offset:2px;
+}
 </style>
 </head>
 <body>
@@ -180,6 +192,23 @@ iframe{
     <div id="modalBotones">
       <button id="modalCancelar">Cancelar</button>
       <button id="modalAplicar">Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PARA EDITAR UNA CAJA DE TEXTO -->
+<div id="modalEditarFondo" style="display:none; position:fixed; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,.6); z-index:2000; align-items:center; justify-content:center;">
+  <div id="modalEditarCaja" style="background:white; border-radius:10px; padding:24px; width:320px; display:flex; flex-direction:column; gap:12px; font-family:sans-serif;">
+    <h3 style="margin:0 0 4px 0;">Editar caja de texto</h3>
+    <label for="modalEditarTexto">Texto:</label>
+    <input type="text" id="modalEditarTexto" style="padding:8px; font-size:16px;">
+    <label>
+      <input type="checkbox" id="modalEditarContador">
+      Es contador de regalo (participa en TEST y RESET)
+    </label>
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button id="modalEditarCancelar" style="padding:10px 14px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; background:#ccc;">Cancelar</button>
+      <button id="modalEditarGuardar" style="padding:10px 14px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; background:#4CAF50; color:white;">Guardar</button>
     </div>
   </div>
 </div>
@@ -275,10 +304,12 @@ function crearBoxTexto(id, datos){
   box.className = "box";
   box.id = id;
   box.dataset.tipo = "texto";
+  box.dataset.contador = datos.contador ? "true" : "false";
   box.style.left = datos.left;
   box.style.top = datos.top;
   box.style.width = datos.width;
   box.style.height = datos.height;
+  if(datos.contador) box.classList.add("es-contador");
 
   const contenido = document.createElement("div");
   contenido.className = "texto-contenido";
@@ -293,17 +324,16 @@ function crearBoxTexto(id, datos){
   return box;
 }
 
-// Doble click: reescribe el texto completo a mano (útil para renombrar o
-// escribir un mensaje que no es un número)
-function editarBoxTexto(box){
-  const contenido = box.querySelector(".texto-contenido");
-  const actual = contenido.textContent;
-  const nuevo = prompt("Escribe el nuevo texto:", actual);
-  if(nuevo === null) return;
+// Doble click: abre un modal para reescribir el texto y/o marcar la caja
+// como contador de regalo (para que participe en TEST y RESET)
+let boxEnEdicion = null;
 
-  contenido.textContent = nuevo;
-  set(ref(database, "textoLive/" + box.id), nuevo)
-    .catch(err => alert("❌ No se pudo actualizar el texto en vivo: " + err.message));
+function editarBoxTexto(box){
+  boxEnEdicion = box;
+  const contenido = box.querySelector(".texto-contenido");
+  modalEditarTexto.value = contenido.textContent;
+  modalEditarContador.checked = box.dataset.contador === "true";
+  modalEditarFondo.style.display = "flex";
 }
 
 // Suma "cantidad" al valor numérico actual de una caja de texto (contador)
@@ -404,7 +434,8 @@ document.getElementById("guardar").onclick = ()=>{
         tipo: "texto",
         left: box.style.left, top: box.style.top,
         width: box.style.width, height: box.style.height,
-        contenido: contenido.textContent
+        contenido: contenido.textContent,
+        contador: box.dataset.contador === "true"
       };
     } else {
       const iframe = box.querySelector("iframe");
@@ -423,15 +454,43 @@ document.getElementById("guardar").onclick = ()=>{
     .catch(err=> alert("❌ Error al guardar: " + err.message));
 };
 
+// ---------- MODAL EDITAR TEXTO ----------
+const modalEditarFondo = document.getElementById("modalEditarFondo");
+const modalEditarTexto = document.getElementById("modalEditarTexto");
+const modalEditarContador = document.getElementById("modalEditarContador");
+
+document.getElementById("modalEditarCancelar").onclick = ()=>{
+  modalEditarFondo.style.display = "none";
+  boxEnEdicion = null;
+};
+
+document.getElementById("modalEditarGuardar").onclick = ()=>{
+  if(!boxEnEdicion) return;
+  const box = boxEnEdicion;
+  const contenido = box.querySelector(".texto-contenido");
+  const nuevoTexto = modalEditarTexto.value;
+  const esContador = modalEditarContador.checked;
+
+  contenido.textContent = nuevoTexto;
+  box.dataset.contador = esContador ? "true" : "false";
+  box.classList.toggle("es-contador", esContador);
+
+  set(ref(database, "textoLive/" + box.id), nuevoTexto)
+    .catch(err => alert("❌ No se pudo actualizar el texto en vivo: " + err.message));
+
+  modalEditarFondo.style.display = "none";
+  boxEnEdicion = null;
+};
+
 // ---------- MODAL TEST ----------
 const modalFondo = document.getElementById("modalFondo");
 const modalSelect = document.getElementById("modalSelect");
 const modalCantidad = document.getElementById("modalCantidad");
 
 document.getElementById("test").onclick = ()=>{
-  const cajasTexto = document.querySelectorAll('.box[data-tipo="texto"]');
+  const cajasTexto = document.querySelectorAll('.box[data-tipo="texto"][data-contador="true"]');
   if(cajasTexto.length === 0){
-    alert("Primero crea al menos una caja de texto con '🔤 AGREGAR TEXTO' (esa es la que funciona como contador).");
+    alert("No hay cajas marcadas como contador todavía. Haz doble click en una caja de texto y marca 'Es contador de regalo'.");
     return;
   }
   modalSelect.innerHTML = "";
@@ -460,15 +519,14 @@ document.getElementById("modalAplicar").onclick = ()=>{
   modalFondo.style.display = "none";
 };
 
-// BOTÓN RESET (reinicia TODAS las cajas de texto a 0 — úsalo solo si
-// todas tus cajas de texto son contadores de regalo)
+// BOTÓN RESET (reinicia SOLO las cajas marcadas como contador de regalo)
 document.getElementById("reset").onclick = ()=>{
-  const cajasTexto = document.querySelectorAll('.box[data-tipo="texto"]');
+  const cajasTexto = document.querySelectorAll('.box[data-tipo="texto"][data-contador="true"]');
   if(cajasTexto.length === 0){
-    alert("No hay cajas de texto para resetear.");
+    alert("No hay cajas marcadas como contador todavía. Haz doble click en una caja de texto y marca 'Es contador de regalo'.");
     return;
   }
-  if(!confirm("¿Reiniciar todas las cajas de texto (contadores) a 0?")) return;
+  if(!confirm("¿Reiniciar los contadores de regalo a 0?")) return;
   cajasTexto.forEach(box => resetearTexto(box));
 };
 
