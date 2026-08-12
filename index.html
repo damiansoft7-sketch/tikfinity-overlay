@@ -104,7 +104,49 @@ iframe{
 #guardar{ background:#2196F3; color:white; }
 #agregar{ background:#4CAF50; color:white; }
 #agregarTexto{ background:#000; color:white; border:2px solid white; }
+#test{ background:#FF9800; color:white; }
+#reset{ background:#795548; color:white; }
 #eliminar{ background:#f44336; color:white; }
+
+/* MODAL DE TEST */
+#modalFondo{
+  display:none;
+  position:fixed;
+  left:0; top:0; width:100%; height:100%;
+  background:rgba(0,0,0,.6);
+  z-index:2000;
+  align-items:center;
+  justify-content:center;
+}
+#modalCaja{
+  background:white;
+  border-radius:10px;
+  padding:24px;
+  width:300px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  font-family:sans-serif;
+}
+#modalCaja h3{ margin:0 0 4px 0; }
+#modalCaja select, #modalCaja input{
+  padding:8px;
+  font-size:16px;
+}
+#modalBotones{
+  display:flex;
+  gap:8px;
+  justify-content:flex-end;
+}
+#modalBotones button{
+  padding:10px 14px;
+  border:none;
+  border-radius:6px;
+  font-weight:bold;
+  cursor:pointer;
+}
+#modalAplicar{ background:#4CAF50; color:white; }
+#modalCancelar{ background:#ccc; }
 </style>
 </head>
 <body>
@@ -113,6 +155,8 @@ iframe{
   <button id="guardar">GUARDAR DISEÑO</button>
   <button id="agregar">➕ AGREGAR ELEMENTO</button>
   <button id="agregarTexto">🔤 AGREGAR TEXTO</button>
+  <button id="test">🧪 TEST</button>
+  <button id="reset">♻ RESET</button>
   <button id="eliminar">🗑 ELIMINAR SELECCIONADO</button>
 </div>
 
@@ -122,6 +166,21 @@ iframe{
     <div id="marco"></div>
     <div id="zona"></div>
     <!-- Las cajas se generan dinámicamente desde JS -->
+  </div>
+</div>
+
+<!-- MODAL PARA EL BOTÓN TEST -->
+<div id="modalFondo">
+  <div id="modalCaja">
+    <h3>Simular regalo</h3>
+    <label for="modalSelect">Caja de texto (contador):</label>
+    <select id="modalSelect"></select>
+    <label for="modalCantidad">Cantidad a sumar:</label>
+    <input type="number" id="modalCantidad" value="1" min="1">
+    <div id="modalBotones">
+      <button id="modalCancelar">Cancelar</button>
+      <button id="modalAplicar">Aplicar</button>
+    </div>
   </div>
 </div>
 
@@ -169,7 +228,7 @@ function actualizarEscalaContenido(box){
   iframe.style.transform = `scale(${width / baseWidth}, ${height / baseHeight})`;
 }
 
-// CREA UNA CAJA DE IFRAME (widgets de Tikfinity, etc.)
+// ---------- CAJA DE IFRAME ----------
 function crearBoxIframe(id, datos){
   const box = document.createElement("div");
   box.className = "box";
@@ -189,20 +248,28 @@ function crearBoxIframe(id, datos){
 
   actualizarEscalaContenido(box);
 
-  box.addEventListener("click", (e)=>{
-    e.stopPropagation();
-    seleccionarBox(box);
-  });
-  box.addEventListener("dblclick", (e)=>{
-    e.stopPropagation();
-    editarBoxIframe(box);
-  });
+  box.addEventListener("click", (e)=>{ e.stopPropagation(); seleccionarBox(box); });
+  box.addEventListener("dblclick", (e)=>{ e.stopPropagation(); editarBoxIframe(box); });
 
   activarMoveable(box);
   return box;
 }
 
-// CREA UNA CAJA DE TEXTO (fondo negro, letra blanca)
+function editarBoxIframe(box){
+  const anchoActual = box.dataset.baseWidth;
+  const altoActual = box.dataset.baseHeight;
+
+  const nuevoAncho = prompt("Ancho NATURAL del widget (px). Si se ve cortado a los lados, aumenta este valor:", anchoActual);
+  if(nuevoAncho === null) return;
+  const nuevoAlto = prompt("Alto NATURAL del widget (px). Si se ve cortado arriba/abajo, aumenta este valor:", altoActual);
+  if(nuevoAlto === null) return;
+
+  box.dataset.baseWidth = parseFloat(nuevoAncho) || anchoActual;
+  box.dataset.baseHeight = parseFloat(nuevoAlto) || altoActual;
+  actualizarEscalaContenido(box);
+}
+
+// ---------- CAJA DE TEXTO (también sirve como contador de regalos) ----------
 function crearBoxTexto(id, datos){
   const box = document.createElement("div");
   box.className = "box";
@@ -219,35 +286,15 @@ function crearBoxTexto(id, datos){
   box.appendChild(contenido);
   canvas.appendChild(box);
 
-  box.addEventListener("click", (e)=>{
-    e.stopPropagation();
-    seleccionarBox(box);
-  });
-  box.addEventListener("dblclick", (e)=>{
-    e.stopPropagation();
-    editarBoxTexto(box);
-  });
+  box.addEventListener("click", (e)=>{ e.stopPropagation(); seleccionarBox(box); });
+  box.addEventListener("dblclick", (e)=>{ e.stopPropagation(); editarBoxTexto(box); });
 
   activarMoveable(box);
   return box;
 }
 
-// EDITAR ENLACE/TAMAÑO NATURAL DE UNA CAJA IFRAME
-function editarBoxIframe(box){
-  const anchoActual = box.dataset.baseWidth;
-  const altoActual = box.dataset.baseHeight;
-
-  const nuevoAncho = prompt("Ancho NATURAL del widget (px). Si se ve cortado a los lados, aumenta este valor:", anchoActual);
-  if(nuevoAncho === null) return;
-  const nuevoAlto = prompt("Alto NATURAL del widget (px). Si se ve cortado arriba/abajo, aumenta este valor:", altoActual);
-  if(nuevoAlto === null) return;
-
-  box.dataset.baseWidth = parseFloat(nuevoAncho) || anchoActual;
-  box.dataset.baseHeight = parseFloat(nuevoAlto) || altoActual;
-  actualizarEscalaContenido(box);
-}
-
-// EDITAR TEXTO DE UNA CAJA DE TEXTO -> se actualiza al instante en el overlay
+// Doble click: reescribe el texto completo a mano (útil para renombrar o
+// escribir un mensaje que no es un número)
 function editarBoxTexto(box){
   const contenido = box.querySelector(".texto-contenido");
   const actual = contenido.textContent;
@@ -255,14 +302,31 @@ function editarBoxTexto(box){
   if(nuevo === null) return;
 
   contenido.textContent = nuevo;
-
-  // Escribe directo en Firebase para que el overlay lo reciba EN VIVO,
-  // sin necesidad de presionar "GUARDAR DISEÑO"
   set(ref(database, "textoLive/" + box.id), nuevo)
     .catch(err => alert("❌ No se pudo actualizar el texto en vivo: " + err.message));
 }
 
-// ACTIVA ARRASTRE Y REDIMENSIONADO SOBRE UNA CAJA
+// Suma "cantidad" al valor numérico actual de una caja de texto (contador)
+// y lo publica en vivo. Si el texto actual no es un número (ej. todavía
+// dice el nombre del regalo), arranca desde 0.
+function sumarATexto(box, cantidad){
+  const contenido = box.querySelector(".texto-contenido");
+  const actual = parseInt(contenido.textContent) || 0;
+  const nuevoValor = actual + cantidad;
+  contenido.textContent = String(nuevoValor);
+  set(ref(database, "textoLive/" + box.id), String(nuevoValor))
+    .catch(err => alert("❌ No se pudo actualizar el contador en vivo: " + err.message));
+}
+
+// Pone una caja de texto (contador) en 0 y lo publica en vivo
+function resetearTexto(box){
+  const contenido = box.querySelector(".texto-contenido");
+  contenido.textContent = "0";
+  set(ref(database, "textoLive/" + box.id), "0")
+    .catch(err => alert("❌ No se pudo resetear: " + err.message));
+}
+
+// ---------- COMUNES ----------
 function activarMoveable(box){
   const m = new Moveable(document.body, {
     target: box,
@@ -284,14 +348,12 @@ function activarMoveable(box){
   moveables[box.id] = m;
 }
 
-// MARCA VISUALMENTE LA CAJA SELECCIONADA
 function seleccionarBox(box){
   if(seleccionada) seleccionada.classList.remove("seleccionado");
   seleccionada = box;
   box.classList.add("seleccionado");
 }
 
-// Click fuera de cualquier caja = deselecciona
 document.getElementById("vista").addEventListener("click", ()=>{
   if(seleccionada){
     seleccionada.classList.remove("seleccionado");
@@ -303,38 +365,18 @@ document.getElementById("vista").addEventListener("click", ()=>{
 document.getElementById("agregar").onclick = ()=>{
   const link = prompt("Pega el enlace (URL) del widget de Tikfinity:");
   if(!link) return;
-
   const id = "box_" + Date.now();
-
-  crearBoxIframe(id, {
-    left:"100px",
-    top:"100px",
-    width:"400px",
-    height:"150px",
-    baseWidth:400,
-    baseHeight:150,
-    link: link
-  });
+  crearBoxIframe(id, { left:"100px", top:"100px", width:"400px", height:"150px", baseWidth:400, baseHeight:150, link });
 };
 
-// BOTÓN AGREGAR TEXTO
+// BOTÓN AGREGAR TEXTO (úsalo también para crear un contador de regalo:
+// pon el nombre del regalo como texto inicial, ej. "Rosa")
 document.getElementById("agregarTexto").onclick = ()=>{
-  const texto = prompt("Texto inicial de la caja:", "Escribe tu texto");
+  const texto = prompt("Texto inicial de la caja (o el nombre del regalo si va a ser un contador):", "Escribe tu texto");
   if(texto === null) return;
-
   const id = "texto_" + Date.now();
-
-  crearBoxTexto(id, {
-    left:"150px",
-    top:"800px",
-    width:"780px",
-    height:"200px",
-    contenido: texto
-  });
-
-  // También lo deja disponible en tiempo real desde ya
-  set(ref(database, "textoLive/" + id), texto)
-    .catch(err => console.error("No se pudo inicializar textoLive:", err));
+  crearBoxTexto(id, { left:"150px", top:"800px", width:"780px", height:"200px", contenido: texto });
+  set(ref(database, "textoLive/" + id), texto).catch(err => console.error(err));
 };
 
 // BOTÓN ELIMINAR
@@ -360,20 +402,16 @@ document.getElementById("guardar").onclick = ()=>{
       const contenido = box.querySelector(".texto-contenido");
       diseño[box.id] = {
         tipo: "texto",
-        left: box.style.left,
-        top: box.style.top,
-        width: box.style.width,
-        height: box.style.height,
+        left: box.style.left, top: box.style.top,
+        width: box.style.width, height: box.style.height,
         contenido: contenido.textContent
       };
     } else {
       const iframe = box.querySelector("iframe");
       diseño[box.id] = {
         tipo: "iframe",
-        left: box.style.left,
-        top: box.style.top,
-        width: box.style.width,
-        height: box.style.height,
+        left: box.style.left, top: box.style.top,
+        width: box.style.width, height: box.style.height,
         baseWidth: parseFloat(box.dataset.baseWidth),
         baseHeight: parseFloat(box.dataset.baseHeight),
         link: iframe ? iframe.src : ""
@@ -381,12 +419,57 @@ document.getElementById("guardar").onclick = ()=>{
     }
   });
   set(ref(database, "diseño"), diseño)
-    .then(()=>{
-      alert("✅ Diseño guardado correctamente");
-    })
-    .catch(err=>{
-      alert("❌ Error al guardar: " + err.message);
-    });
+    .then(()=> alert("✅ Diseño guardado correctamente"))
+    .catch(err=> alert("❌ Error al guardar: " + err.message));
+};
+
+// ---------- MODAL TEST ----------
+const modalFondo = document.getElementById("modalFondo");
+const modalSelect = document.getElementById("modalSelect");
+const modalCantidad = document.getElementById("modalCantidad");
+
+document.getElementById("test").onclick = ()=>{
+  const cajasTexto = document.querySelectorAll('.box[data-tipo="texto"]');
+  if(cajasTexto.length === 0){
+    alert("Primero crea al menos una caja de texto con '🔤 AGREGAR TEXTO' (esa es la que funciona como contador).");
+    return;
+  }
+  modalSelect.innerHTML = "";
+  cajasTexto.forEach(box=>{
+    const opt = document.createElement("option");
+    opt.value = box.id;
+    const textoActual = box.querySelector(".texto-contenido").textContent;
+    opt.textContent = textoActual ? `${textoActual} (${box.id})` : box.id;
+    modalSelect.appendChild(opt);
+  });
+  modalCantidad.value = 1;
+  modalFondo.style.display = "flex";
+};
+
+document.getElementById("modalCancelar").onclick = ()=>{
+  modalFondo.style.display = "none";
+};
+
+document.getElementById("modalAplicar").onclick = ()=>{
+  const id = modalSelect.value;
+  const cantidad = parseInt(modalCantidad.value) || 0;
+  const box = document.getElementById(id);
+  if(box && cantidad > 0){
+    sumarATexto(box, cantidad);
+  }
+  modalFondo.style.display = "none";
+};
+
+// BOTÓN RESET (reinicia TODAS las cajas de texto a 0 — úsalo solo si
+// todas tus cajas de texto son contadores de regalo)
+document.getElementById("reset").onclick = ()=>{
+  const cajasTexto = document.querySelectorAll('.box[data-tipo="texto"]');
+  if(cajasTexto.length === 0){
+    alert("No hay cajas de texto para resetear.");
+    return;
+  }
+  if(!confirm("¿Reiniciar todas las cajas de texto (contadores) a 0?")) return;
+  cajasTexto.forEach(box => resetearTexto(box));
 };
 
 // CARGA INICIAL: intenta traer lo guardado en Firebase, si no existe usa las cajas por defecto
