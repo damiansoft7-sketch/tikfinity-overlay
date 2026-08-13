@@ -69,56 +69,37 @@ iframe{
   </div>
 </div>
 
-<!-- Indicador de estado (solo visible si el overlay está en ventana normal; en OBS no molesta) -->
 <div id="estado-tikfinity" class="desconectado">⬤ Tikfinity desconectado</div>
 
 <script type="module">
-import { database, ref, onValue, set, get } from "./firebase.js";
+import { database, ref, onValue, set } from "./firebase.js";
 
 // ═══════════════════════════════════════════════════════
-//  MAPA DE REGALOS → CAJAS DE TEXTO
-//  Clave: nombre del regalo tal como lo manda Tikfinity
-//         (insensible a mayúsculas)
-//  Valor: ID de la caja de texto en Firebase/DOM
+//  MAPA DE REGALOS → CAJAS DE TEXTO (dinámico desde Firebase)
 // ═══════════════════════════════════════════════════════
-const MAPA_REGALOS = {
-  "gg"  : "texto_1786492863677",   // regalo GG   → caja 1
-  "rosa": "texto_1786492875052",   // regalo Rosa → caja 2
-};
+let mapaRegalos = {};
 
 // ═══════════════════════════════════════════════════════
-//  CONTADORES EN MEMORIA (evitan leer Firebase en cada regalo)
+//  CONTADORES EN MEMORIA
 // ═══════════════════════════════════════════════════════
-const contadores = {};   // { cajaId: valorNumerico }
-
-// Inicializa los contadores leyendo el valor actual en Firebase
-async function iniciarContadores(){
-  for(const cajaId of Object.values(MAPA_REGALOS)){
-    try{
-      const snap = await get(ref(database, "textoLive/" + cajaId));
-      contadores[cajaId] = parseInt(snap.exists() ? snap.val() : "0") || 0;
-    } catch(e){
-      contadores[cajaId] = 0;
-    }
-  }
-}
+const contadores = {};
 
 // Suma al contador correcto y lo publica en Firebase
 function registrarRegalo(nombreRegalo, cantidad){
   const clave = nombreRegalo.toLowerCase().trim();
-  const cajaId = MAPA_REGALOS[clave];
-  if(!cajaId) return;   // regalo no mapeado, ignorar
-
+  const cajaId = mapaRegalos[clave];
+  if(!cajaId){
+    console.log(`[Regalo no mapeado] "${nombreRegalo}" — no tiene caja asignada`);
+    return;
+  }
   contadores[cajaId] = (contadores[cajaId] || 0) + cantidad;
   set(ref(database, "textoLive/" + cajaId), String(contadores[cajaId]))
     .catch(err => console.warn("Firebase write error:", err));
+  console.log(`[Contador actualizado] "${nombreRegalo}" → caja ${cajaId} = ${contadores[cajaId]}`);
 }
 
 // ═══════════════════════════════════════════════════════
-//  WEBSOCKET — Tikfinity Desktop local
-//  Puerto estándar: 21213
-//  El overlay intenta reconectarse automáticamente si
-//  Tikfinity no está abierto todavía o se cierra.
+//  WEBSOCKET — Tikfinity Desktop local (puerto 21213)
 // ═══════════════════════════════════════════════════════
 const WS_URL = "ws://127.0.0.1:21213/";
 const estadoEl = document.getElementById("estado-tikfinity");
@@ -140,8 +121,6 @@ function conectarTikfinity(){
     setEstado("conectado", "⬤ Tikfinity conectado");
     console.log("[Tikfinity WS] Conectado");
     clearTimeout(reconectarTimer);
-
-    // Tikfinity requiere una suscripción a los eventos que queremos recibir
     ws.send(JSON.stringify({ type: "subscribe", events: ["gift"] }));
   };
 
@@ -149,23 +128,32 @@ function conectarTikfinity(){
     let msg;
     try { msg = JSON.parse(event.data); } catch(e){ return; }
 
-    // Log en consola para que puedas ver el formato real (útil al principio)
     console.log("[Tikfinity WS] Mensaje:", msg);
 
     // ── Detectar el evento de regalo ──────────────────────────────
-    // Tikfinity puede mandar el tipo en msg.type o msg.event
     const tipo = (msg.type || msg.event || "").toLowerCase();
     if(tipo !== "gift") return;
 
-    // El nombre del regalo puede venir en distintos campos según la versión
+    // ── FILTRO CLAVE: solo contar cuando el regalo terminó completamente ──
+    // Tikfinity manda 2 eventos por cada regalo:
+    //   repeatEnd: false → en progreso, ignorar
+    //   repeatEnd: true  → terminado, contar
+    const terminado = msg.repeatEnd ?? msg.data?.repeatEnd ?? false;
+    if(!terminado){
+      console.log(`[Regalo en progreso, ignorando] repeatEnd=false`);
+      return;
+    }
+
+    // El nombre del regalo puede venir en distintos campos
     const nombre = msg.giftName || msg.name || msg.gift?.name || msg.data?.giftName || "";
-    // La cantidad puede venir como repeatCount, count, amount, etc.
+    // La cantidad viene en el evento final con el total acumulado
     const cantidad = parseInt(
       msg.repeatCount ?? msg.count ?? msg.amount ??
       msg.gift?.repeatCount ?? msg.data?.repeatCount ?? 1
     ) || 1;
 
     if(!nombre) return;
+
     console.log(`[Regalo] ${nombre} x${cantidad}`);
     registrarRegalo(nombre, cantidad);
   };
@@ -182,7 +170,7 @@ function conectarTikfinity(){
 }
 
 // ═══════════════════════════════════════════════════════
-//  CANVAS / FIREBASE — igual que antes
+//  CANVAS / FIREBASE
 // ═══════════════════════════════════════════════════════
 const canvas = document.getElementById("canvas");
 
@@ -242,7 +230,6 @@ function crearBoxTexto(id, datos){
     if(snapshot.exists()){
       const val = snapshot.val();
       contenido.textContent = val;
-      // Mantiene el contador en memoria sincronizado
       contadores[id] = parseInt(val) || 0;
     }
   });
@@ -252,6 +239,11 @@ function actualizarBoxTexto(box, datos){
   box.style.left = datos.left; box.style.top = datos.top;
   box.style.width = datos.width; box.style.height = datos.height;
 }
+
+// Esperar a que el primer diseño esté listo antes de conectar a Tikfinity
+let primerDiseñoListo = false;
+let avisarPrimerDiseño;
+const primerDiseñoPromise = new Promise(res => avisarPrimerDiseño = res);
 
 // ── diseño en tiempo real ──
 onValue(ref(database, "diseño"), (snapshot)=>{
@@ -277,12 +269,28 @@ onValue(ref(database, "diseño"), (snapshot)=>{
       actualizarBoxIframe(existente.box, datos);
     }
   });
+
+  // ── Reconstruir el mapa de regalos → caja ──
+  const nuevoMapa = {};
+  idsNuevos.forEach(id=>{
+    const datos = diseño[id];
+    if(datos.tipo === "texto" && datos.contador && datos.nombreRegalo){
+      nuevoMapa[datos.nombreRegalo.toLowerCase().trim()] = id;
+    }
+  });
+  mapaRegalos = nuevoMapa;
+  console.log("[mapaRegalos actualizado]", mapaRegalos);
+
+  if(!primerDiseñoListo){
+    primerDiseñoListo = true;
+    avisarPrimerDiseño();
+  }
 });
 
 // ═══════════════════════════════════════════════════════
-//  ARRANQUE
+//  ARRANQUE — esperar diseño de Firebase, luego conectar
 // ═══════════════════════════════════════════════════════
-await iniciarContadores();
+await primerDiseñoPromise;
 conectarTikfinity();
 
 </script>
