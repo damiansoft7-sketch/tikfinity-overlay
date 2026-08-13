@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+html,body{
+  margin:0; padding:0;
+  width:100%; height:100%;
+  background:transparent;
+  overflow:hidden;
+}
+#vista{
+  width:100vw; height:100vh;
+  overflow:hidden;
+  position:absolute;
+  left:0; top:0;
+}
+#canvas{
+  position:absolute;
+  left:0; top:0;
+  width:1080px; height:1920px;
+  transform-origin:top left;
+  will-change: transform;
+}
+.box{
+  position:absolute;
+  overflow:hidden;
+}
+iframe{
+  position:absolute;
+  left:0; top:0;
+  border:none;
+  background:transparent;
+  pointer-events:none;
+  transform-origin:top left;
+  will-change: transform;
+}
+.texto-contenido{
+  width:100%; height:100%;
+  background:#000; color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  text-align:center; box-sizing:border-box; padding:10px;
+  font-size:48px; font-weight:bold;
+  word-break:break-word; line-height:1.2;
+}
+
+/* Indicador de estado de conexión Tikfinity */
+#estado-tikfinity{
+  position:fixed;
+  bottom:8px; right:8px;
+  font-size:11px;
+  font-family:sans-serif;
+  padding:4px 8px;
+  border-radius:4px;
+  z-index:9999;
+  opacity:0.75;
+  pointer-events:none;
+}
+#estado-tikfinity.conectado  { background:#1b5e20; color:#a5d6a7; }
+#estado-tikfinity.desconectado{ background:#b71c1c; color:#ef9a9a; }
+#estado-tikfinity.reconectando{ background:#e65100; color:#ffe0b2; }
+</style>
+</head>
+<body>
+
+<div id="vista">
+  <div id="canvas">
+    <!-- Las cajas se generan dinámicamente desde Firebase -->
+  </div>
+</div>
+
+<div id="estado-tikfinity" class="desconectado">⬤ Tikfinity desconectado</div>
+
+<script type="module">
+import { database, ref, onValue, set } from "./firebase.js";
+
+// ═══════════════════════════════════════════════════════
+//  MAPA DE REGALOS → CAJAS DE TEXTO (dinámico desde Firebase)
+// ═══════════════════════════════════════════════════════
+let mapaRegalos = {};
+
+// ═══════════════════════════════════════════════════════
+//  CONTADORES EN MEMORIA
+// ═══════════════════════════════════════════════════════
+const contadores = {};
+
+// Suma al contador correcto y lo publica en Firebase
+function registrarRegalo(nombreRegalo, cantidad){
+  const clave = nombreRegalo.toLowerCase().trim();
+  const cajaId = mapaRegalos[clave];
+  if(!cajaId){
+    console.log(`[Regalo no mapeado] "${nombreRegalo}" — no tiene caja asignada`);
+    return;
+  }
+  contadores[cajaId] = (contadores[cajaId] || 0) + cantidad;
+  set(ref(database, "textoLive/" + cajaId), String(contadores[cajaId]))
+    .catch(err => console.warn("Firebase write error:", err));
+  console.log(`[Contador actualizado] "${nombreRegalo}" → caja ${cajaId} = ${contadores[cajaId]}`);
+}
+
+// ═══════════════════════════════════════════════════════
+//  WEBSOCKET — Tikfinity Desktop local (puerto 21213)
+// ═══════════════════════════════════════════════════════
+const WS_URL = "ws://127.0.0.1:21213/";
+const estadoEl = document.getElementById("estado-tikfinity");
+let ws = null;
+let reconectarTimer = null;
+
+function setEstado(estado, texto){
+  estadoEl.className = estado;
+  estadoEl.textContent = texto;
+}
+
+function conectarTikfinity(){
+  if(ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+
+  setEstado("reconectando", "⬤ Conectando a Tikfinity…");
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    setEstado("conectado", "⬤ Tikfinity conectado");
+    console.log("[Tikfinity WS] Conectado");
+    clearTimeout(reconectarTimer);
+    ws.send(JSON.stringify({ type: "subscribe", events: ["gift"] }));
+  };
+
+  ws.onmessage = (event) => {
+    let msg;
+    try { msg = JSON.parse(event.data); } catch(e){ return; }
+
+    console.log("[Tikfinity WS] Mensaje:", msg);
+
+    // ── Detectar el evento de regalo ──────────────────────────────
+    const tipo = (msg.type || msg.event || "").toLowerCase();
+    if(tipo !== "gift") return;
+
+    // ── FILTRO CLAVE: solo contar cuando el regalo terminó completamente ──
+    // Tikfinity manda 2 eventos por cada regalo:
+    //   repeatEnd: false → en progreso, ignorar
+    //   repeatEnd: true  → terminado, contar
+    const terminado = msg.repeatEnd ?? msg.data?.repeatEnd ?? false;
+    if(!terminado){
+      console.log(`[Regalo en progreso, ignorando] repeatEnd=false`);
+      return;
+    }
+
+    // El nombre del regalo puede venir en distintos campos
+    const nombre = msg.giftName || msg.name || msg.gift?.name || msg.data?.giftName || "";
+    // La cantidad viene en el evento final con el total acumulado
+    const cantidad = parseInt(
+      msg.repeatCount ?? msg.count ?? msg.amount ??
+      msg.gift?.repeatCount ?? msg.data?.repeatCount ?? 1
+    ) || 1;
+
+    if(!nombre) return;
+
+    console.log(`[Regalo] ${nombre} x${cantidad}`);
+    registrarRegalo(nombre, cantidad);
+  };
+
+  ws.onerror = (err) => {
+    console.warn("[Tikfinity WS] Error:", err);
+  };
+
+  ws.onclose = () => {
+    setEstado("desconectado", "⬤ Tikfinity desconectado");
+    console.log("[Tikfinity WS] Cerrado — reintentando en 5s…");
+    reconectarTimer = setTimeout(conectarTikfinity, 5000);
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+//  CANVAS / FIREBASE
+// ═══════════════════════════════════════════════════════
+const canvas = document.getElementById("canvas");
+
+let resizePendiente = false;
+function ajustarCanvas(){
+  const escala = Math.min(window.innerWidth / 1080, window.innerHeight / 1920);
+  canvas.style.transform = `scale(${escala})`;
+}
+window.addEventListener("resize", ()=>{
+  if(resizePendiente) return;
+  resizePendiente = true;
+  requestAnimationFrame(()=>{ ajustarCanvas(); resizePendiente = false; });
+});
+ajustarCanvas();
+
+const cajasCreadas = {};
+
+// ── iframe ──
+function actualizarBoxIframe(box, datos){
+  box.style.left = datos.left; box.style.top = datos.top;
+  box.style.width = datos.width; box.style.height = datos.height;
+  const baseWidth  = parseFloat(datos.baseWidth)  || 400;
+  const baseHeight = parseFloat(datos.baseHeight) || 150;
+  const iframe = box.querySelector("iframe");
+  if(iframe.src !== datos.link) iframe.src = datos.link;
+  iframe.style.width  = baseWidth  + "px";
+  iframe.style.height = baseHeight + "px";
+  iframe.style.transform = `scale(${parseFloat(datos.width)/baseWidth}, ${parseFloat(datos.height)/baseHeight})`;
+}
+
+function crearBoxIframe(id, datos){
+  const box = document.createElement("div");
+  box.className = "box"; box.id = id;
+  const iframe = document.createElement("iframe");
+  box.appendChild(iframe);
+  canvas.appendChild(box);
+  actualizarBoxIframe(box, datos);
+  cajasCreadas[id] = { box, tipo:"iframe" };
+}
+
+// ── texto / contador ──
+function crearBoxTexto(id, datos){
+  const box = document.createElement("div");
+  box.className = "box"; box.id = id;
+  box.style.left = datos.left; box.style.top = datos.top;
+  box.style.width = datos.width; box.style.height = datos.height;
+
+  const contenido = document.createElement("div");
+  contenido.className = "texto-contenido";
+  contenido.textContent = datos.contenido || "";
+  box.appendChild(contenido);
+  canvas.appendChild(box);
+  cajasCreadas[id] = { box, tipo:"texto" };
+
+  // Actualización en tiempo real desde Firebase
+  onValue(ref(database, "textoLive/" + id), (snapshot)=>{
+    if(snapshot.exists()){
+      const val = snapshot.val();
+      contenido.textContent = val;
+      contadores[id] = parseInt(val) || 0;
+    }
+  });
+}
+
+function actualizarBoxTexto(box, datos){
+  box.style.left = datos.left; box.style.top = datos.top;
+  box.style.width = datos.width; box.style.height = datos.height;
+}
+
+// Esperar a que el primer diseño esté listo antes de conectar a Tikfinity
+let primerDiseñoListo = false;
+let avisarPrimerDiseño;
+const primerDiseñoPromise = new Promise(res => avisarPrimerDiseño = res);
+
+// ── diseño en tiempo real ──
+onValue(ref(database, "diseño"), (snapshot)=>{
+  const diseño = snapshot.exists() ? snapshot.val() : {};
+  const idsNuevos = Object.keys(diseño);
+
+  Object.keys(cajasCreadas).forEach(id=>{
+    if(!idsNuevos.includes(id)){
+      cajasCreadas[id].box.remove();
+      delete cajasCreadas[id];
+    }
+  });
+
+  idsNuevos.forEach(id=>{
+    const datos = diseño[id];
+    const existente = cajasCreadas[id];
+    if(!existente){
+      if(datos.tipo === "texto") crearBoxTexto(id, datos);
+      else crearBoxIframe(id, datos);
+    } else if(existente.tipo === "texto"){
+      actualizarBoxTexto(existente.box, datos);
+    } else {
+      actualizarBoxIframe(existente.box, datos);
+    }
+  });
+
+  // ── Reconstruir el mapa de regalos → caja ──
+  const nuevoMapa = {};
+  idsNuevos.forEach(id=>{
+    const datos = diseño[id];
+    if(datos.tipo === "texto" && datos.contador && datos.nombreRegalo){
+      nuevoMapa[datos.nombreRegalo.toLowerCase().trim()] = id;
+    }
+  });
+  mapaRegalos = nuevoMapa;
+  console.log("[mapaRegalos actualizado]", mapaRegalos);
+
+  if(!primerDiseñoListo){
+    primerDiseñoListo = true;
+    avisarPrimerDiseño();
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  ARRANQUE — esperar diseño de Firebase, luego conectar
+// ═══════════════════════════════════════════════════════
+await primerDiseñoPromise;
+conectarTikfinity();
+
+</script>
+</body>
+</html>
