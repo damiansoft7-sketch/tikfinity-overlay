@@ -12,8 +12,45 @@ html,body{
   overflow:hidden;
   font-family:sans-serif;
 }
+
+/* LAYOUT PRINCIPAL */
+#layout{
+  display:flex;
+  width:100vw;
+  height:100vh;
+  overflow:hidden;
+}
+
+/* PANEL IZQUIERDO — botones */
+#panel{
+  width:180px;
+  min-width:180px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:15px 10px;
+  background:#1a1a1a;
+  overflow-y:auto;
+  z-index:999;
+}
+#panel button{
+  padding:10px 12px;
+  border:none;
+  border-radius:6px;
+  font-weight:bold;
+  cursor:pointer;
+  font-size:13px;
+}
+#guardar{ background:#2196F3; color:white; }
+#agregar{ background:#4CAF50; color:white; }
+#agregarTexto{ background:#000; color:white; border:2px solid white; }
+#test{ background:#FF9800; color:white; }
+#reset{ background:#795548; color:white; }
+#eliminar{ background:#f44336; color:white; }
+
+/* CANVAS CENTER */
 #vista{
-  width:100vw; height:100vh;
+  flex:1;
   display:flex;
   justify-content:center;
   align-items:center;
@@ -66,49 +103,192 @@ iframe{
   pointer-events:none;
   transform-origin:top left;
 }
-
-/* CAJA DE TEXTO */
 .texto-contenido{
-  width:100%;
-  height:100%;
-  background:#000;
-  color:#fff;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  box-sizing:border-box;
-  padding:10px;
-  font-size:48px;
-  font-weight:bold;
-  word-break:break-word;
-  line-height:1.2;
+  width:100%; height:100%;
+  background:#000; color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  text-align:center; box-sizing:border-box; padding:10px;
+  font-size:48px; font-weight:bold;
+  word-break:break-word; line-height:1.2;
+}
+.box.es-contador{
+  outline:3px dashed #FF9800;
+  outline-offset:2px;
 }
 
-/* PANEL DE BOTONES */
-#panel{
-  position:fixed;
-  top:15px; left:15px;
-  z-index:999;
+/* PANEL DERECHO — stream info */
+#streamPanel{
+  width:260px;
+  min-width:260px;
+  background:#1a1a1a;
   display:flex;
   flex-direction:column;
-  gap:8px;
+  overflow:hidden;
+  border-left:2px solid #333;
 }
-#panel button{
-  padding:12px 16px;
-  border:none;
-  border-radius:6px;
-  font-weight:bold;
-  cursor:pointer;
-}
-#guardar{ background:#2196F3; color:white; }
-#agregar{ background:#4CAF50; color:white; }
-#agregarTexto{ background:#000; color:white; border:2px solid white; }
-#test{ background:#FF9800; color:white; }
-#reset{ background:#795548; color:white; }
-#eliminar{ background:#f44336; color:white; }
 
-/* MODAL DE TEST */
+#streamPanel .sp-header{
+  background:#111;
+  padding:10px 12px;
+  font-size:12px;
+  font-weight:bold;
+  color:#aaa;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+#streamPanel .sp-header span{
+  font-size:10px;
+  color:#555;
+  font-weight:normal;
+  text-transform:none;
+}
+
+/* Stats bar */
+#statsBar{
+  display:flex;
+  gap:0;
+  border-bottom:1px solid #333;
+}
+.stat-item{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:10px 4px;
+  border-right:1px solid #333;
+}
+.stat-item:last-child{ border-right:none; }
+.stat-valor{
+  font-size:20px;
+  font-weight:bold;
+  color:#fff;
+}
+.stat-label{
+  font-size:9px;
+  color:#666;
+  text-transform:uppercase;
+  margin-top:2px;
+}
+
+/* Tabs */
+#tabs{
+  display:flex;
+  border-bottom:1px solid #333;
+}
+.tab{
+  flex:1;
+  padding:8px 4px;
+  text-align:center;
+  font-size:11px;
+  color:#666;
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all 0.2s;
+}
+.tab.activo{
+  color:#fff;
+  border-bottom:2px solid #2196F3;
+}
+
+/* Contenido tabs */
+.tab-content{ display:none; flex:1; overflow-y:auto; }
+.tab-content.activo{ display:flex; flex-direction:column; }
+
+/* Chat */
+#chatLista{
+  flex:1;
+  overflow-y:auto;
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.chat-msg{
+  font-size:12px;
+  line-height:1.4;
+  padding:4px 6px;
+  border-radius:4px;
+  background:#252525;
+  word-break:break-word;
+}
+.chat-msg .chat-user{
+  color:#2196F3;
+  font-weight:bold;
+  margin-right:4px;
+}
+.chat-msg.es-regalo{
+  background:#2a1f00;
+  border-left:3px solid #FF9800;
+}
+.chat-msg.es-follow{
+  background:#0d2a0d;
+  border-left:3px solid #4CAF50;
+}
+
+/* Regalos recientes */
+#regaloLista{
+  flex:1;
+  overflow-y:auto;
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.regalo-item{
+  font-size:12px;
+  padding:6px 8px;
+  border-radius:4px;
+  background:#252525;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.regalo-nombre{ color:#FF9800; font-weight:bold; }
+.regalo-user{ color:#aaa; font-size:11px; }
+.regalo-cantidad{
+  background:#FF9800;
+  color:#000;
+  font-weight:bold;
+  font-size:11px;
+  padding:2px 6px;
+  border-radius:10px;
+  min-width:24px;
+  text-align:center;
+}
+
+/* Seguidores recientes */
+#followLista{
+  flex:1;
+  overflow-y:auto;
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.follow-item{
+  font-size:12px;
+  padding:5px 8px;
+  border-radius:4px;
+  background:#0d2a0d;
+  color:#4CAF50;
+}
+
+/* Estado WS */
+#estadoWS{
+  padding:6px 10px;
+  font-size:10px;
+  text-align:center;
+  border-top:1px solid #333;
+}
+#estadoWS.conectado{ color:#4CAF50; }
+#estadoWS.desconectado{ color:#f44336; }
+#estadoWS.reconectando{ color:#FF9800; }
+
+/* MODALES */
 #modalFondo{
   display:none;
   position:fixed;
@@ -126,70 +306,110 @@ iframe{
   display:flex;
   flex-direction:column;
   gap:12px;
-  font-family:sans-serif;
 }
 #modalCaja h3{ margin:0 0 4px 0; }
-#modalCaja select, #modalCaja input{
-  padding:8px;
-  font-size:16px;
-}
-#modalBotones{
-  display:flex;
-  gap:8px;
-  justify-content:flex-end;
-}
+#modalCaja select, #modalCaja input{ padding:8px; font-size:16px; }
+#modalBotones{ display:flex; gap:8px; justify-content:flex-end; }
 #modalBotones button{
-  padding:10px 14px;
-  border:none;
-  border-radius:6px;
-  font-weight:bold;
-  cursor:pointer;
+  padding:10px 14px; border:none; border-radius:6px;
+  font-weight:bold; cursor:pointer;
 }
 #modalAplicar{ background:#4CAF50; color:white; }
 #modalCancelar{ background:#ccc; }
 
 #modalEditarCaja label{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-size:15px;
-}
-
-.box.es-contador{
-  outline:3px dashed #FF9800;
-  outline-offset:2px;
+  display:flex; align-items:center; gap:8px; font-size:15px;
 }
 </style>
 </head>
 <body>
 
-<div id="panel">
-  <button id="guardar">GUARDAR DISEÑO</button>
-  <button id="agregar">➕ AGREGAR ELEMENTO</button>
-  <button id="agregarTexto">🔤 AGREGAR TEXTO</button>
-  <button id="test">🧪 TEST</button>
-  <button id="reset">♻ RESET</button>
-  <button id="eliminar">🗑 ELIMINAR SELECCIONADO</button>
-</div>
+<div id="layout">
 
-<div id="vista">
-  <div id="canvas">
-    <img id="guia" src="guia.jpeg">
-    <div id="marco"></div>
-    <div id="zona"></div>
-    <!-- Las cajas se generan dinámicamente desde JS -->
+  <!-- PANEL IZQUIERDO -->
+  <div id="panel">
+    <button id="guardar">GUARDAR DISEÑO</button>
+    <button id="agregar">➕ AGREGAR ELEMENTO</button>
+    <button id="agregarTexto">🔤 AGREGAR TEXTO</button>
+    <button id="test">🧪 TEST</button>
+    <button id="reset">♻ RESET</button>
+    <button id="eliminar">🗑 ELIMINAR SELECCIONADO</button>
   </div>
+
+  <!-- CANVAS -->
+  <div id="vista">
+    <div id="canvas">
+      <img id="guia" src="guia.jpeg">
+      <div id="marco"></div>
+      <div id="zona"></div>
+    </div>
+  </div>
+
+  <!-- PANEL DERECHO — STREAM INFO -->
+  <div id="streamPanel">
+
+    <div class="sp-header">
+      📡 Stream Info
+      <span id="estadoConexion">desconectado</span>
+    </div>
+
+    <!-- Stats -->
+    <div id="statsBar">
+      <div class="stat-item">
+        <div class="stat-valor" id="statViewers">—</div>
+        <div class="stat-label">👁 Views</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-valor" id="statRegalos">0</div>
+        <div class="stat-label">🎁 Regalos</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-valor" id="statFollows">0</div>
+        <div class="stat-label">👤 Follows</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-valor" id="statLikes">0</div>
+        <div class="stat-label">❤️ Likes</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div id="tabs">
+      <div class="tab activo" data-tab="chat">💬 Chat</div>
+      <div class="tab" data-tab="regalos">🎁 Regalos</div>
+      <div class="tab" data-tab="follows">👤 Follows</div>
+    </div>
+
+    <!-- Chat -->
+    <div class="tab-content activo" id="tab-chat">
+      <div id="chatLista"></div>
+    </div>
+
+    <!-- Regalos -->
+    <div class="tab-content" id="tab-regalos">
+      <div id="regaloLista"></div>
+    </div>
+
+    <!-- Follows -->
+    <div class="tab-content" id="tab-follows">
+      <div id="followLista"></div>
+    </div>
+
+    <div id="estadoWS" class="desconectado">⬤ Tikfinity desconectado</div>
+
+  </div>
+
 </div>
 
-<!-- MODAL PARA EL BOTÓN TEST -->
+<!-- MODAL TEST -->
 <div id="modalFondo">
   <div id="modalCaja">
     <h3>Simular regalo</h3>
-    <label for="modalNombreRegalo">Nombre exacto del regalo a simular:</label>
-    <input type="text" id="modalNombreRegalo" list="listaRegalos" placeholder="Ej: Rosa (deja vacío para elegir caja abajo)">
-    <label for="modalSelect">O elegir caja directamente:</label>
+    <label>Nombre del regalo:</label>
+    <input type="text" id="modalNombreRegalo" list="listaRegalos" placeholder="Ej: Rosa">
+    <label>O elegir caja:</label>
     <select id="modalSelect"></select>
-    <label for="modalCantidad">Cantidad a sumar:</label>
+    <label>Cantidad:</label>
     <input type="number" id="modalCantidad" value="1" min="1">
     <div id="modalBotones">
       <button id="modalCancelar">Cancelar</button>
@@ -198,18 +418,18 @@ iframe{
   </div>
 </div>
 
-<!-- MODAL PARA EDITAR UNA CAJA DE TEXTO -->
+<!-- MODAL EDITAR TEXTO -->
 <div id="modalEditarFondo" style="display:none; position:fixed; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,.6); z-index:2000; align-items:center; justify-content:center;">
-  <div id="modalEditarCaja" style="background:white; border-radius:10px; padding:24px; width:320px; display:flex; flex-direction:column; gap:12px; font-family:sans-serif;">
+  <div id="modalEditarCaja" style="background:white; border-radius:10px; padding:24px; width:320px; display:flex; flex-direction:column; gap:12px;">
     <h3 style="margin:0 0 4px 0;">Editar caja de texto</h3>
-    <label for="modalEditarTexto">Texto:</label>
+    <label>Texto:</label>
     <input type="text" id="modalEditarTexto" style="padding:8px; font-size:16px;">
     <label>
       <input type="checkbox" id="modalEditarContador">
-      Es contador de regalo (participa en TEST y RESET)
+      Es contador de regalo
     </label>
     <div id="modalEditarNombreRegaloWrap" style="display:flex; flex-direction:column; gap:4px;">
-      <label for="modalEditarNombreRegalo">Nombre exacto del regalo (TikTok):</label>
+      <label>Nombre exacto del regalo (TikTok):</label>
       <input type="text" id="modalEditarNombreRegalo" list="listaRegalos" placeholder="Ej: Rosa" style="padding:8px; font-size:16px;">
     </div>
     <div style="display:flex; gap:8px; justify-content:flex-end;">
@@ -219,8 +439,6 @@ iframe{
   </div>
 </div>
 
-<!-- Sugerencias de nombres de regalos comunes de TikTok (el usuario puede -->
-<!-- elegir uno o escribir cualquier otro nombre que no esté en la lista) -->
 <datalist id="listaRegalos">
   <option value="Rosa">
   <option value="GG">
@@ -239,7 +457,6 @@ import { database, ref, set, get } from "./firebase.js";
 
 const canvas = document.getElementById("canvas");
 
-// Datos iniciales por defecto (se usan si en Firebase no hay nada guardado todavía)
 const cajasPorDefecto = {
   box1: { tipo:"iframe", left:"50px",  top:"200px",  width:"400px", height:"150px", baseWidth:400, baseHeight:150, link:"https://tikfinity.zerody.one/widget/topliker?cid=2357749" },
   box2: { tipo:"iframe", left:"630px", top:"200px",  width:"400px", height:"150px", baseWidth:400, baseHeight:150, link:"https://tikfinity.zerody.one/widget/socialmediarotator?cid=2357749" },
@@ -247,24 +464,22 @@ const cajasPorDefecto = {
   box4: { tipo:"iframe", left:"630px", top:"1550px", width:"400px", height:"200px", baseWidth:400, baseHeight:200, link:"https://tikfinity.zerody.one/widget/carousel?cid=2357749" }
 };
 
-const moveables = {};   // guarda la instancia de Moveable de cada caja (por id)
-let seleccionada = null; // referencia a la caja actualmente seleccionada
-
+const moveables = {};
+let seleccionada = null;
 const BASE_WIDTH_DEFAULT = 400;
 const BASE_HEIGHT_DEFAULT = 150;
 
-// ESCALAR EL EDITOR AL MONITOR
+// ── ESCALAR EDITOR ──
 function ajustarEditor(){
   let escala = Math.min(
-    (window.innerWidth - 100) / 1080,
-    (window.innerHeight - 100) / 1920
+    (window.innerWidth - 460) / 1080,
+    (window.innerHeight - 60) / 1920
   );
   canvas.style.transform = `scale(${escala})`;
 }
 window.addEventListener("resize", ajustarEditor);
 ajustarEditor();
 
-// RECALCULA EL ZOOM DEL CONTENIDO DEL IFRAME SEGÚN EL TAMAÑO ACTUAL DE LA CAJA
 function actualizarEscalaContenido(box){
   const iframe = box.querySelector("iframe");
   if(!iframe) return;
@@ -272,35 +487,27 @@ function actualizarEscalaContenido(box){
   const baseHeight = parseFloat(box.dataset.baseHeight) || 150;
   const width = parseFloat(box.style.width);
   const height = parseFloat(box.style.height);
-
   iframe.style.width = baseWidth + "px";
   iframe.style.height = baseHeight + "px";
-  iframe.style.transform = `scale(${width / baseWidth}, ${height / baseHeight})`;
+  iframe.style.transform = `scale(${width/baseWidth}, ${height/baseHeight})`;
 }
 
-// ---------- CAJA DE IFRAME ----------
+// ── CAJAS ──
 function crearBoxIframe(id, datos){
   const box = document.createElement("div");
-  box.className = "box";
-  box.id = id;
+  box.className = "box"; box.id = id;
   box.dataset.tipo = "iframe";
-  box.style.left = datos.left;
-  box.style.top = datos.top;
-  box.style.width = datos.width;
-  box.style.height = datos.height;
+  box.style.left = datos.left; box.style.top = datos.top;
+  box.style.width = datos.width; box.style.height = datos.height;
   box.dataset.baseWidth = datos.baseWidth || BASE_WIDTH_DEFAULT;
   box.dataset.baseHeight = datos.baseHeight || BASE_HEIGHT_DEFAULT;
-
   const iframe = document.createElement("iframe");
   iframe.src = datos.link || "";
   box.appendChild(iframe);
   canvas.appendChild(box);
-
   actualizarEscalaContenido(box);
-
-  box.addEventListener("click", (e)=>{ e.stopPropagation(); seleccionarBox(box); });
-  box.addEventListener("dblclick", (e)=>{ e.stopPropagation(); editarBoxIframe(box); });
-
+  box.addEventListener("click", e=>{ e.stopPropagation(); seleccionarBox(box); });
+  box.addEventListener("dblclick", e=>{ e.stopPropagation(); editarBoxIframe(box); });
   activarMoveable(box);
   return box;
 }
@@ -308,48 +515,36 @@ function crearBoxIframe(id, datos){
 function editarBoxIframe(box){
   const anchoActual = box.dataset.baseWidth;
   const altoActual = box.dataset.baseHeight;
-
-  const nuevoAncho = prompt("Ancho NATURAL del widget (px). Si se ve cortado a los lados, aumenta este valor:", anchoActual);
+  const nuevoAncho = prompt("Ancho NATURAL del widget (px):", anchoActual);
   if(nuevoAncho === null) return;
-  const nuevoAlto = prompt("Alto NATURAL del widget (px). Si se ve cortado arriba/abajo, aumenta este valor:", altoActual);
+  const nuevoAlto = prompt("Alto NATURAL del widget (px):", altoActual);
   if(nuevoAlto === null) return;
-
   box.dataset.baseWidth = parseFloat(nuevoAncho) || anchoActual;
   box.dataset.baseHeight = parseFloat(nuevoAlto) || altoActual;
   actualizarEscalaContenido(box);
 }
 
-// ---------- CAJA DE TEXTO (también sirve como contador de regalos) ----------
 function crearBoxTexto(id, datos){
   const box = document.createElement("div");
-  box.className = "box";
-  box.id = id;
+  box.className = "box"; box.id = id;
   box.dataset.tipo = "texto";
   box.dataset.contador = datos.contador ? "true" : "false";
   box.dataset.nombreRegalo = datos.nombreRegalo || "";
-  box.style.left = datos.left;
-  box.style.top = datos.top;
-  box.style.width = datos.width;
-  box.style.height = datos.height;
+  box.style.left = datos.left; box.style.top = datos.top;
+  box.style.width = datos.width; box.style.height = datos.height;
   if(datos.contador) box.classList.add("es-contador");
-
   const contenido = document.createElement("div");
   contenido.className = "texto-contenido";
   contenido.textContent = datos.contenido || "Escribe tu texto";
   box.appendChild(contenido);
   canvas.appendChild(box);
-
-  box.addEventListener("click", (e)=>{ e.stopPropagation(); seleccionarBox(box); });
-  box.addEventListener("dblclick", (e)=>{ e.stopPropagation(); editarBoxTexto(box); });
-
+  box.addEventListener("click", e=>{ e.stopPropagation(); seleccionarBox(box); });
+  box.addEventListener("dblclick", e=>{ e.stopPropagation(); editarBoxTexto(box); });
   activarMoveable(box);
   return box;
 }
 
-// Doble click: abre un modal para reescribir el texto y/o marcar la caja
-// como contador de regalo (para que participe en TEST y RESET)
 let boxEnEdicion = null;
-
 function editarBoxTexto(box){
   boxEnEdicion = box;
   const contenido = box.querySelector(".texto-contenido");
@@ -360,44 +555,30 @@ function editarBoxTexto(box){
   modalEditarFondo.style.display = "flex";
 }
 
-// Suma "cantidad" al valor numérico actual de una caja de texto (contador)
-// y lo publica en vivo. Si el texto actual no es un número (ej. todavía
-// dice el nombre del regalo), arranca desde 0.
 function sumarATexto(box, cantidad){
   const contenido = box.querySelector(".texto-contenido");
   const actual = parseInt(contenido.textContent) || 0;
   const nuevoValor = actual + cantidad;
   contenido.textContent = String(nuevoValor);
   set(ref(database, "textoLive/" + box.id), String(nuevoValor))
-    .catch(err => alert("❌ No se pudo actualizar el contador en vivo: " + err.message));
+    .catch(err => alert("❌ Error: " + err.message));
 }
 
-// Pone una caja de texto (contador) en 0 y lo publica en vivo
 function resetearTexto(box){
   const contenido = box.querySelector(".texto-contenido");
   contenido.textContent = "0";
   set(ref(database, "textoLive/" + box.id), "0")
-    .catch(err => alert("❌ No se pudo resetear: " + err.message));
+    .catch(err => alert("❌ Error: " + err.message));
 }
 
-// ---------- COMUNES ----------
 function activarMoveable(box){
   const m = new Moveable(document.body, {
-    target: box,
-    draggable: true,
-    resizable: true,
-    origin: false
+    target: box, draggable: true, resizable: true, origin: false
   })
-  .on("drag", e=>{
-    box.style.left = e.left + "px";
-    box.style.top = e.top + "px";
-  })
+  .on("drag", e=>{ box.style.left = e.left+"px"; box.style.top = e.top+"px"; })
   .on("resize", e=>{
-    box.style.width = e.width + "px";
-    box.style.height = e.height + "px";
-    if(box.dataset.tipo === "iframe"){
-      actualizarEscalaContenido(box);
-    }
+    box.style.width = e.width+"px"; box.style.height = e.height+"px";
+    if(box.dataset.tipo === "iframe") actualizarEscalaContenido(box);
   });
   moveables[box.id] = m;
 }
@@ -409,77 +590,59 @@ function seleccionarBox(box){
 }
 
 document.getElementById("vista").addEventListener("click", ()=>{
-  if(seleccionada){
-    seleccionada.classList.remove("seleccionado");
-    seleccionada = null;
-  }
+  if(seleccionada){ seleccionada.classList.remove("seleccionado"); seleccionada = null; }
 });
 
-// BOTÓN AGREGAR (iframe / widget Tikfinity)
 document.getElementById("agregar").onclick = ()=>{
-  const link = prompt("Pega el enlace (URL) del widget de Tikfinity:");
+  const link = prompt("Pega el enlace del widget de Tikfinity:");
   if(!link) return;
-  const id = "box_" + Date.now();
-  crearBoxIframe(id, { left:"100px", top:"100px", width:"400px", height:"150px", baseWidth:400, baseHeight:150, link });
+  crearBoxIframe("box_"+Date.now(), { left:"100px", top:"100px", width:"400px", height:"150px", baseWidth:400, baseHeight:150, link });
 };
 
-// BOTÓN AGREGAR TEXTO (úsalo también para crear un contador de regalo:
-// pon el nombre del regalo como texto inicial, ej. "Rosa")
 document.getElementById("agregarTexto").onclick = ()=>{
-  const texto = prompt("Texto inicial de la caja (o el nombre del regalo si va a ser un contador):", "Escribe tu texto");
+  const texto = prompt("Texto inicial:", "Escribe tu texto");
   if(texto === null) return;
-  const id = "texto_" + Date.now();
+  const id = "texto_"+Date.now();
   crearBoxTexto(id, { left:"150px", top:"800px", width:"780px", height:"200px", contenido: texto });
-  set(ref(database, "textoLive/" + id), texto).catch(err => console.error(err));
+  set(ref(database, "textoLive/"+id), texto).catch(err => console.error(err));
 };
 
-// BOTÓN ELIMINAR
 document.getElementById("eliminar").onclick = ()=>{
-  if(!seleccionada){
-    alert("Selecciona primero una caja haciendo click sobre ella.");
-    return;
-  }
+  if(!seleccionada){ alert("Selecciona una caja primero."); return; }
   const id = seleccionada.id;
-  if(moveables[id]){
-    moveables[id].destroy();
-    delete moveables[id];
-  }
-  seleccionada.remove();
-  seleccionada = null;
+  if(moveables[id]){ moveables[id].destroy(); delete moveables[id]; }
+  seleccionada.remove(); seleccionada = null;
 };
 
-// BOTÓN GUARDAR
 document.getElementById("guardar").onclick = ()=>{
   let diseño = {};
   document.querySelectorAll(".box").forEach(box=>{
     if(box.dataset.tipo === "texto"){
       const contenido = box.querySelector(".texto-contenido");
       diseño[box.id] = {
-        tipo: "texto",
-        left: box.style.left, top: box.style.top,
-        width: box.style.width, height: box.style.height,
-        contenido: contenido.textContent,
+        tipo:"texto", left:box.style.left, top:box.style.top,
+        width:box.style.width, height:box.style.height,
+        contenido:contenido.textContent,
         contador: box.dataset.contador === "true",
         nombreRegalo: box.dataset.nombreRegalo || ""
       };
     } else {
       const iframe = box.querySelector("iframe");
       diseño[box.id] = {
-        tipo: "iframe",
-        left: box.style.left, top: box.style.top,
-        width: box.style.width, height: box.style.height,
+        tipo:"iframe", left:box.style.left, top:box.style.top,
+        width:box.style.width, height:box.style.height,
         baseWidth: parseFloat(box.dataset.baseWidth),
         baseHeight: parseFloat(box.dataset.baseHeight),
         link: iframe ? iframe.src : ""
       };
     }
   });
-  set(ref(database, "diseño"), diseño)
-    .then(()=> alert("✅ Diseño guardado correctamente"))
-    .catch(err=> alert("❌ Error al guardar: " + err.message));
+  set(ref(database,"diseño"), diseño)
+    .then(()=> alert("✅ Diseño guardado"))
+    .catch(err=> alert("❌ Error: "+err.message));
 };
 
-// ---------- MODAL EDITAR TEXTO ----------
+// MODAL EDITAR TEXTO
 const modalEditarFondo = document.getElementById("modalEditarFondo");
 const modalEditarTexto = document.getElementById("modalEditarTexto");
 const modalEditarContador = document.getElementById("modalEditarContador");
@@ -491,31 +654,21 @@ function actualizarVisibilidadNombreRegalo(){
 }
 modalEditarContador.addEventListener("change", actualizarVisibilidadNombreRegalo);
 
-document.getElementById("modalEditarCancelar").onclick = ()=>{
-  modalEditarFondo.style.display = "none";
-  boxEnEdicion = null;
-};
-
+document.getElementById("modalEditarCancelar").onclick = ()=>{ modalEditarFondo.style.display="none"; boxEnEdicion=null; };
 document.getElementById("modalEditarGuardar").onclick = ()=>{
   if(!boxEnEdicion) return;
   const box = boxEnEdicion;
   const contenido = box.querySelector(".texto-contenido");
-  const nuevoTexto = modalEditarTexto.value;
   const esContador = modalEditarContador.checked;
-
-  contenido.textContent = nuevoTexto;
+  contenido.textContent = modalEditarTexto.value;
   box.dataset.contador = esContador ? "true" : "false";
   box.dataset.nombreRegalo = esContador ? modalEditarNombreRegalo.value.trim() : "";
   box.classList.toggle("es-contador", esContador);
-
-  set(ref(database, "textoLive/" + box.id), nuevoTexto)
-    .catch(err => alert("❌ No se pudo actualizar el texto en vivo: " + err.message));
-
-  modalEditarFondo.style.display = "none";
-  boxEnEdicion = null;
+  set(ref(database,"textoLive/"+box.id), modalEditarTexto.value).catch(err => alert("❌ "+err.message));
+  modalEditarFondo.style.display="none"; boxEnEdicion=null;
 };
 
-// ---------- MODAL TEST ----------
+// MODAL TEST
 const modalFondo = document.getElementById("modalFondo");
 const modalSelect = document.getElementById("modalSelect");
 const modalCantidad = document.getElementById("modalCantidad");
@@ -523,79 +676,190 @@ const modalNombreRegalo = document.getElementById("modalNombreRegalo");
 
 document.getElementById("test").onclick = ()=>{
   const cajasTexto = document.querySelectorAll('.box[data-tipo="texto"][data-contador="true"]');
-  if(cajasTexto.length === 0){
-    alert("No hay cajas marcadas como contador todavía. Haz doble click en una caja de texto y marca 'Es contador de regalo'.");
-    return;
-  }
+  if(cajasTexto.length === 0){ alert("No hay cajas contador. Haz doble click en una caja y marca 'Es contador de regalo'."); return; }
   modalSelect.innerHTML = "";
   cajasTexto.forEach(box=>{
     const opt = document.createElement("option");
     opt.value = box.id;
-    const nombreRegalo = box.dataset.nombreRegalo;
-    opt.textContent = nombreRegalo
-      ? `🎁 ${nombreRegalo} (${box.id})`
-      : `⚠ sin nombre de regalo asignado (${box.id})`;
+    const nr = box.dataset.nombreRegalo;
+    opt.textContent = nr ? `🎁 ${nr} (${box.id})` : `⚠ sin nombre (${box.id})`;
     modalSelect.appendChild(opt);
   });
-  modalNombreRegalo.value = "";
-  modalCantidad.value = 1;
+  modalNombreRegalo.value = ""; modalCantidad.value = 1;
   modalFondo.style.display = "flex";
 };
-
-document.getElementById("modalCancelar").onclick = ()=>{
-  modalFondo.style.display = "none";
-};
-
+document.getElementById("modalCancelar").onclick = ()=>{ modalFondo.style.display="none"; };
 document.getElementById("modalAplicar").onclick = ()=>{
   const cantidad = parseInt(modalCantidad.value) || 0;
   const nombreEscrito = modalNombreRegalo.value.trim();
   let box = null;
-
   if(nombreEscrito){
-    // Simula el mismo camino que seguiría un regalo real: busca
-    // la caja cuyo nombreRegalo coincide (insensible a mayúsculas).
     const clave = nombreEscrito.toLowerCase();
     const cajasTexto = document.querySelectorAll('.box[data-tipo="texto"][data-contador="true"]');
-    box = Array.from(cajasTexto).find(b => (b.dataset.nombreRegalo || "").toLowerCase() === clave);
-    if(!box){
-      alert(`⚠ Ninguna caja tiene asignado el regalo "${nombreEscrito}". Revisa el nombre o asígnalo primero (doble click en la caja).`);
-      return;
-    }
+    box = Array.from(cajasTexto).find(b=>(b.dataset.nombreRegalo||"").toLowerCase()===clave);
+    if(!box){ alert(`⚠ Ninguna caja tiene el regalo "${nombreEscrito}".`); return; }
   } else {
     box = document.getElementById(modalSelect.value);
   }
-
-  if(box && cantidad > 0){
-    sumarATexto(box, cantidad);
-  }
-  modalFondo.style.display = "none";
+  if(box && cantidad > 0) sumarATexto(box, cantidad);
+  modalFondo.style.display="none";
 };
 
-// BOTÓN RESET (reinicia SOLO las cajas marcadas como contador de regalo)
 document.getElementById("reset").onclick = ()=>{
   const cajasTexto = document.querySelectorAll('.box[data-tipo="texto"][data-contador="true"]');
-  if(cajasTexto.length === 0){
-    alert("No hay cajas marcadas como contador todavía. Haz doble click en una caja de texto y marca 'Es contador de regalo'.");
-    return;
-  }
-  if(!confirm("¿Reiniciar los contadores de regalo a 0?")) return;
+  if(cajasTexto.length === 0){ alert("No hay cajas contador."); return; }
+  if(!confirm("¿Reiniciar contadores a 0?")) return;
   cajasTexto.forEach(box => resetearTexto(box));
 };
 
-// CARGA INICIAL: intenta traer lo guardado en Firebase, si no existe usa las cajas por defecto
+// CARGA INICIAL
 async function iniciar(){
-  const snapshot = await get(ref(database, "diseño"));
+  const snapshot = await get(ref(database,"diseño"));
   const datos = snapshot.exists() ? snapshot.val() : cajasPorDefecto;
   Object.keys(datos).forEach(id=>{
     const item = datos[id];
-    if(item.tipo === "texto"){
-      crearBoxTexto(id, item);
-    } else {
-      crearBoxIframe(id, item);
-    }
+    if(item.tipo === "jarron") return;
+    if(item.tipo === "texto") crearBoxTexto(id, item);
+    else crearBoxIframe(id, item);
   });
 }
 iniciar();
+
+// ═══════════════════════════════════════════════════════
+//  PANEL DERECHO — STREAM INFO (WebSocket Tikfinity)
+// ═══════════════════════════════════════════════════════
+const WS_URL = "ws://127.0.0.1:21213/";
+let wsPanel = null;
+let reconectarTimerPanel = null;
+let totalRegalos = 0;
+let totalFollows = 0;
+let totalLikes = 0;
+
+const estadoWS = document.getElementById("estadoWS");
+const estadoConexion = document.getElementById("estadoConexion");
+const chatLista = document.getElementById("chatLista");
+const regaloLista = document.getElementById("regaloLista");
+const followLista = document.getElementById("followLista");
+const statViewers = document.getElementById("statViewers");
+const statRegalos = document.getElementById("statRegalos");
+const statFollows = document.getElementById("statFollows");
+const statLikes = document.getElementById("statLikes");
+
+function setEstadoPanel(estado, texto){
+  estadoWS.className = estado;
+  estadoWS.textContent = "⬤ " + texto;
+  estadoConexion.textContent = texto;
+}
+
+const MAX_ITEMS = 50;
+
+function agregarChat(user, mensaje, tipo="normal"){
+  const div = document.createElement("div");
+  div.className = "chat-msg" + (tipo !== "normal" ? " es-"+tipo : "");
+  div.innerHTML = `<span class="chat-user">${user}:</span>${mensaje}`;
+  chatLista.appendChild(div);
+  if(chatLista.children.length > MAX_ITEMS) chatLista.firstChild.remove();
+  chatLista.scrollTop = chatLista.scrollHeight;
+}
+
+function agregarRegalo(user, nombre, cantidad){
+  const div = document.createElement("div");
+  div.className = "regalo-item";
+  div.innerHTML = `
+    <div>
+      <div class="regalo-nombre">🎁 ${nombre}</div>
+      <div class="regalo-user">${user}</div>
+    </div>
+    <div class="regalo-cantidad">x${cantidad}</div>
+  `;
+  regaloLista.prepend(div);
+  if(regaloLista.children.length > MAX_ITEMS) regaloLista.lastChild.remove();
+
+  // También al chat
+  agregarChat(user, `envió ${nombre} x${cantidad}`, "regalo");
+
+  // Sumar stats
+  totalRegalos += cantidad;
+  statRegalos.textContent = totalRegalos;
+}
+
+function agregarFollow(user){
+  const div = document.createElement("div");
+  div.className = "follow-item";
+  div.textContent = `👤 ${user} te siguió`;
+  followLista.prepend(div);
+  if(followLista.children.length > MAX_ITEMS) followLista.lastChild.remove();
+
+  agregarChat(user, "te siguió", "follow");
+
+  totalFollows++;
+  statFollows.textContent = totalFollows;
+}
+
+function conectarPanel(){
+  if(wsPanel && (wsPanel.readyState === WebSocket.OPEN || wsPanel.readyState === WebSocket.CONNECTING)) return;
+
+  setEstadoPanel("reconectando", "Conectando…");
+  wsPanel = new WebSocket(WS_URL);
+
+  wsPanel.onopen = ()=>{
+    setEstadoPanel("conectado", "Tikfinity conectado");
+    clearTimeout(reconectarTimerPanel);
+    wsPanel.send(JSON.stringify({ type:"subscribe", events:["gift","chat","member","roomUser"] }));
+  };
+
+  wsPanel.onmessage = (event)=>{
+    let msg;
+    try { msg = JSON.parse(event.data); } catch(e){ return; }
+
+    const tipo = (msg.type || msg.event || "").toLowerCase();
+    const d = msg.data || msg;
+
+    if(tipo === "chat"){
+      const user = d.uniqueId || d.nickname || d.user?.uniqueId || "Usuario";
+      const texto = d.comment || d.message || "";
+      if(texto) agregarChat(user, texto);
+    }
+
+    else if(tipo === "gift"){
+      const terminado = d.repeatEnd ?? false;
+      if(!terminado) return;
+      const user = d.uniqueId || d.nickname || d.user?.uniqueId || "Usuario";
+      const nombre = d.giftName || d.name || "";
+      const cantidad = parseInt(d.repeatCount ?? d.count ?? 1) || 1;
+      if(nombre) agregarRegalo(user, nombre, cantidad);
+    }
+
+    else if(tipo === "member" || tipo === "follow"){
+      const user = d.uniqueId || d.nickname || d.user?.uniqueId || "Usuario";
+      agregarFollow(user);
+    }
+
+    else if(tipo === "roomuser" || tipo === "livestatuschange"){
+      const viewers = d.viewerCount ?? d.viewers ?? d.userCount ?? null;
+      if(viewers !== null) statViewers.textContent = viewers;
+    }
+  };
+
+  wsPanel.onerror = ()=>{};
+  wsPanel.onclose = ()=>{
+    setEstadoPanel("desconectado", "Tikfinity desconectado");
+    reconectarTimerPanel = setTimeout(conectarPanel, 5000);
+  };
+}
+
+// TABS
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("activo"));
+    document.querySelectorAll(".tab-content").forEach(c=>c.classList.remove("activo"));
+    tab.classList.add("activo");
+    document.getElementById("tab-"+tab.dataset.tab).classList.add("activo");
+  });
+});
+
+conectarPanel();
+
 </script>
 </body>
 </html>
