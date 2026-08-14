@@ -77,6 +77,8 @@ let mapaRegalos = {};
 
 // ═══════════════════════════════════════════════════════
 //  CONTADORES EN MEMORIA
+//  Se sincronizan desde Firebase al cargar cada caja,
+//  así nunca suman desde 0 si ya había un valor previo.
 // ═══════════════════════════════════════════════════════
 const contadores = {};
 
@@ -129,12 +131,12 @@ function conectarTikfinity(){
 
     console.log("[Tikfinity WS] Regalo recibido:", JSON.stringify(msg));
 
-    // Los datos vienen dentro de msg.data o directo en msg
+    // FIX: los datos reales vienen dentro de msg.data o directo en msg
     const d = msg.data || msg;
 
-    // FILTRO CLAVE: solo contar cuando repeatEnd es true
-    // repeatEnd: false = regalo en progreso, ignorar
-    // repeatEnd: true  = regalo terminado, contar
+    // FILTRO CLAVE: solo contar cuando repeatEnd === true
+    // false = regalo en progreso → ignorar
+    // true  = regalo terminado  → contar
     const terminado = d.repeatEnd ?? false;
     if(!terminado){
       console.log("[En progreso, ignorando]");
@@ -184,26 +186,30 @@ ajustarCanvas();
 const cajasCreadas = {};
 
 // ── iframe ──
+function crearBoxIframe(id, datos){
+  const box = document.createElement("div");
+  box.className = "box"; box.id = id;
+  // FIX: crear iframe con src vacío primero, luego actualizarBoxIframe
+  // lo pone correctamente evitando una petición vacía inicial
+  const iframe = document.createElement("iframe");
+  iframe.src = "";
+  box.appendChild(iframe);
+  canvas.appendChild(box);
+  actualizarBoxIframe(box, datos);
+  cajasCreadas[id] = { box, tipo:"iframe" };
+}
+
 function actualizarBoxIframe(box, datos){
   box.style.left = datos.left; box.style.top = datos.top;
   box.style.width = datos.width; box.style.height = datos.height;
   const baseWidth  = parseFloat(datos.baseWidth)  || 400;
   const baseHeight = parseFloat(datos.baseHeight) || 150;
   const iframe = box.querySelector("iframe");
-  if(iframe.src !== datos.link) iframe.src = datos.link;
+  // Solo actualiza src si cambió, evita recargar el widget innecesariamente
+  if(datos.link && iframe.src !== datos.link) iframe.src = datos.link;
   iframe.style.width  = baseWidth  + "px";
   iframe.style.height = baseHeight + "px";
   iframe.style.transform = `scale(${parseFloat(datos.width)/baseWidth}, ${parseFloat(datos.height)/baseHeight})`;
-}
-
-function crearBoxIframe(id, datos){
-  const box = document.createElement("div");
-  box.className = "box"; box.id = id;
-  const iframe = document.createElement("iframe");
-  box.appendChild(iframe);
-  canvas.appendChild(box);
-  actualizarBoxIframe(box, datos);
-  cajasCreadas[id] = { box, tipo:"iframe" };
 }
 
 // ── texto / contador ──
@@ -215,11 +221,17 @@ function crearBoxTexto(id, datos){
 
   const contenido = document.createElement("div");
   contenido.className = "texto-contenido";
+  // Mostramos el contenido del diseño inicialmente;
+  // onValue lo reemplazará con el valor real de textoLive apenas cargue
   contenido.textContent = datos.contenido || "";
   box.appendChild(contenido);
   canvas.appendChild(box);
   cajasCreadas[id] = { box, tipo:"texto" };
 
+  // FIX: siempre escucha textoLive/{id} para sincronizar el valor real
+  // desde Firebase, independiente del contenido guardado en diseño.
+  // Esto asegura que los contadores siempre muestren el valor correcto
+  // incluso si el editor guardó "0" en diseño/{id}/contenido.
   onValue(ref(database, "textoLive/" + id), (snapshot)=>{
     if(snapshot.exists()){
       const val = snapshot.val();
@@ -230,6 +242,8 @@ function crearBoxTexto(id, datos){
 }
 
 function actualizarBoxTexto(box, datos){
+  // Solo actualiza posición y tamaño, NUNCA el contenido
+  // para no pisar el valor del contador en pantalla
   box.style.left = datos.left; box.style.top = datos.top;
   box.style.width = datos.width; box.style.height = datos.height;
 }
@@ -243,6 +257,7 @@ onValue(ref(database, "diseño"), (snapshot)=>{
   const diseño = snapshot.exists() ? snapshot.val() : {};
   const idsNuevos = Object.keys(diseño);
 
+  // Eliminar cajas que ya no existen en Firebase
   Object.keys(cajasCreadas).forEach(id=>{
     if(!idsNuevos.includes(id)){
       cajasCreadas[id].box.remove();
@@ -252,7 +267,10 @@ onValue(ref(database, "diseño"), (snapshot)=>{
 
   idsNuevos.forEach(id=>{
     const datos = diseño[id];
-    if(datos.tipo === "jarron") return; // ignorar jarrón si quedó en Firebase
+
+    // FIX: ignorar cualquier tipo desconocido (jarron u otros)
+    // para no romper el overlay si quedaron datos viejos en Firebase
+    if(datos.tipo !== "texto" && datos.tipo !== "iframe") return;
 
     const existente = cajasCreadas[id];
     if(!existente){
@@ -265,7 +283,7 @@ onValue(ref(database, "diseño"), (snapshot)=>{
     }
   });
 
-  // Reconstruir mapa de regalos
+  // Reconstruir mapa de regalos desde Firebase
   const nuevoMapa = {};
   idsNuevos.forEach(id=>{
     const datos = diseño[id];
@@ -283,7 +301,7 @@ onValue(ref(database, "diseño"), (snapshot)=>{
 });
 
 // ═══════════════════════════════════════════════════════
-//  ARRANQUE
+//  ARRANQUE — esperar diseño de Firebase, luego conectar
 // ═══════════════════════════════════════════════════════
 await primerDiseñoPromise;
 conectarTikfinity();
