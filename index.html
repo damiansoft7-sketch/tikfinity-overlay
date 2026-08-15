@@ -149,6 +149,7 @@ iframe{
   <button id="test">🧪 TEST</button>
   <button id="reset">♻ RESET</button>
   <button id="eliminar">🗑 ELIMINAR SELECCIONADO</button>
+  <button id="catalogo" style="background:#673AB7; color:white;">📖 CATÁLOGO DE REGALOS</button>
 </div>
 
 <div id="vista">
@@ -163,8 +164,8 @@ iframe{
 <div id="modalFondo">
   <div id="modalCaja">
     <h3>Simular regalo</h3>
-    <label for="modalNombreRegalo">Nombre exacto del regalo a simular:</label>
-    <input type="text" id="modalNombreRegalo" list="listaRegalos" placeholder="Ej: Rosa (deja vacío para elegir caja abajo)">
+    <label for="modalNombreRegalo">Buscar regalo en el catálogo:</label>
+    <input type="text" id="modalNombreRegalo" list="listaRegalos" placeholder="Escribe para buscar (deja vacío para elegir caja abajo)">
     <label for="modalSelect">O elegir caja directamente:</label>
     <select id="modalSelect"></select>
     <label for="modalCantidad">Cantidad a sumar:</label>
@@ -172,6 +173,25 @@ iframe{
     <div id="modalBotones">
       <button id="modalCancelar">Cancelar</button>
       <button id="modalAplicar">Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CATÁLOGO DE REGALOS -->
+<div id="modalCatalogoFondo" style="display:none; position:fixed; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,.6); z-index:2000; align-items:center; justify-content:center;">
+  <div id="modalCatalogoCaja" style="background:white; border-radius:10px; padding:24px; width:360px; max-height:82vh; display:flex; flex-direction:column; gap:10px; font-family:sans-serif;">
+    <h3 style="margin:0;">📖 Catálogo de regalos</h3>
+    <div style="font-size:13px; color:#666;">Estos son los regalos conocidos, con su ID real de TikTok. Se usan para autocompletar al editar una caja.</div>
+    <div id="listaCatalogo" style="overflow-y:auto; max-height:280px; display:flex; flex-direction:column; gap:6px; border-top:1px solid #eee; border-bottom:1px solid #eee; padding:8px 0;"></div>
+    <strong>Agregar nuevo</strong>
+    <input type="text" id="catNombre" placeholder="Nombre (ej: Rosa)" style="padding:8px; font-size:15px;">
+    <div style="display:flex; gap:8px;">
+      <input type="number" id="catId" placeholder="ID (ej: 5655)" style="padding:8px; font-size:15px; flex:1;">
+      <input type="number" id="catCoins" placeholder="Monedas" style="padding:8px; font-size:15px; flex:1;">
+    </div>
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button id="catCerrar" style="padding:10px 14px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; background:#ccc;">Cerrar</button>
+      <button id="catAgregar" style="padding:10px 14px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; background:#4CAF50; color:white;">➕ Agregar</button>
     </div>
   </div>
 </div>
@@ -187,8 +207,12 @@ iframe{
       Es contador de regalo (participa en TEST y RESET)
     </label>
     <div id="modalEditarNombreRegaloWrap" style="display:flex; flex-direction:column; gap:4px;">
-      <label for="modalEditarNombreRegalo">Nombre exacto del regalo (TikTok):</label>
-      <input type="text" id="modalEditarNombreRegalo" list="listaRegalos" placeholder="Ej: Rosa" style="padding:8px; font-size:16px;">
+      <label for="modalEditarBuscarRegalo">Buscar en catálogo:</label>
+      <input type="text" id="modalEditarBuscarRegalo" list="listaRegalos" placeholder="Escribe para buscar..." style="padding:8px; font-size:16px;">
+      <label for="modalEditarNombreRegalo">Nombre del regalo (referencia):</label>
+      <input type="text" id="modalEditarNombreRegalo" placeholder="Ej: Rosa" style="padding:8px; font-size:16px;">
+      <label for="modalEditarIdRegalo">ID del regalo (esto es lo que se usa para contar):</label>
+      <input type="number" id="modalEditarIdRegalo" placeholder="Ej: 5655" style="padding:8px; font-size:16px;">
     </div>
     <div style="display:flex; gap:8px; justify-content:flex-end;">
       <button id="modalEditarCancelar" style="padding:10px 14px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; background:#ccc;">Cancelar</button>
@@ -197,21 +221,11 @@ iframe{
   </div>
 </div>
 
-<datalist id="listaRegalos">
-  <option value="Rosa">
-  <option value="GG">
-  <option value="Corazón">
-  <option value="Universo">
-  <option value="León">
-  <option value="Corona">
-  <option value="TikTok">
-  <option value="Dedo Rock">
-  <option value="Perfume">
-  <option value="Cohete">
-</datalist>
+<!-- Se rellena dinámicamente desde el catálogo de Firebase (ver actualizarDatalist) -->
+<datalist id="listaRegalos"></datalist>
 
 <script type="module">
-import { database, ref, set, get } from "./firebase.js";
+import { database, ref, set, get, remove, onValue } from "./firebase.js";
 
 const canvas = document.getElementById("canvas");
 
@@ -221,6 +235,109 @@ const cajasPorDefecto = {
   box3: { tipo:"iframe", left:"50px",  top:"1500px", width:"400px", height:"150px", baseWidth:400, baseHeight:150, link:"https://tikfinity.zerody.one/widget/userinfo?cid=2357749" },
   box4: { tipo:"iframe", left:"630px", top:"1550px", width:"400px", height:"200px", baseWidth:400, baseHeight:200, link:"https://tikfinity.zerody.one/widget/carousel?cid=2357749" }
 };
+
+// ═══════════════════════════════════════════════════════
+//  CATÁLOGO DE REGALOS (nombre + ID real de TikTok + monedas)
+//  Vive en Firebase bajo "catalogoRegalos/{id}" para que quede
+//  disponible entre sesiones y sirva para autocompletar al
+//  editar una caja. El matching real de regalos NO depende de
+//  este catálogo (eso lo hace overlay.html por ID) — esto es
+//  solo una ayuda para no tener que ir a buscar cada ID a mano
+//  en Tikfinity cada vez.
+// ═══════════════════════════════════════════════════════
+let catalogo = {}; // { "5655": {nombre:"Rosa", coins:1}, ... }
+
+const catalogoSemilla = {
+  5655:   { nombre: "Rosa",             coins: 1 },
+  5487:   { nombre: "Corazón coreano",  coins: 5 },
+  8913:   { nombre: "Rosa",             coins: 10 },
+  6064:   { nombre: "GG",               coins: 1 },
+  7569:   { nombre: "Control Retro",    coins: 100 },
+  15232:  { nombre: "Eres increíble",   coins: 1 },
+  105781: { nombre: "Balón giratorio", coins: 5 }
+};
+
+async function iniciarCatalogo(){
+  const snap = await get(ref(database, "catalogoRegalos"));
+  if(!snap.exists()){
+    await set(ref(database, "catalogoRegalos"), catalogoSemilla)
+      .catch(err => console.error("No se pudo sembrar el catálogo:", err));
+  }
+}
+
+function actualizarDatalist(){
+  const listaRegalos = document.getElementById("listaRegalos");
+  listaRegalos.innerHTML = "";
+  Object.entries(catalogo)
+    .sort((a,b)=> a[1].nombre.localeCompare(b[1].nombre))
+    .forEach(([id, info])=>{
+      const opt = document.createElement("option");
+      const monedas = Number(info.coins) || 0;
+      opt.value = `${info.nombre} — ID ${id} (${monedas} moneda${monedas === 1 ? "" : "s"})`;
+      listaRegalos.appendChild(opt);
+    });
+}
+
+function renderizarListaCatalogo(){
+  const cont = document.getElementById("listaCatalogo");
+  cont.innerHTML = "";
+  const entradas = Object.entries(catalogo).sort((a,b)=> a[1].nombre.localeCompare(b[1].nombre));
+  if(entradas.length === 0){
+    cont.innerHTML = "<em style='color:#999'>Catálogo vacío. Agregá el primero abajo.</em>";
+    return;
+  }
+  entradas.forEach(([id, info])=>{
+    const monedas = Number(info.coins) || 0;
+    const fila = document.createElement("div");
+    fila.style.cssText = "display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 4px; border-bottom:1px solid #f0f0f0; font-size:14px;";
+    const texto = document.createElement("span");
+    texto.textContent = `🎁 ${info.nombre} — ID ${id} (${monedas} moneda${monedas === 1 ? "" : "s"})`;
+    const btnDel = document.createElement("button");
+    btnDel.textContent = "🗑";
+    btnDel.title = "Eliminar del catálogo";
+    btnDel.style.cssText = "border:none; background:#f44336; color:white; border-radius:4px; padding:4px 10px; cursor:pointer; flex-shrink:0;";
+    btnDel.onclick = ()=>{
+      if(confirm(`¿Eliminar "${info.nombre}" (ID ${id}) del catálogo? (Las cajas que ya lo usan no se ven afectadas)`)){
+        remove(ref(database, "catalogoRegalos/" + id))
+          .catch(err => alert("❌ No se pudo eliminar: " + err.message));
+      }
+    };
+    fila.appendChild(texto);
+    fila.appendChild(btnDel);
+    cont.appendChild(fila);
+  });
+}
+
+onValue(ref(database, "catalogoRegalos"), (snapshot)=>{
+  catalogo = snapshot.exists() ? snapshot.val() : {};
+  actualizarDatalist();
+  renderizarListaCatalogo();
+});
+
+document.getElementById("catalogo").onclick = ()=>{
+  document.getElementById("modalCatalogoFondo").style.display = "flex";
+};
+document.getElementById("catCerrar").onclick = ()=>{
+  document.getElementById("modalCatalogoFondo").style.display = "none";
+};
+document.getElementById("catAgregar").onclick = ()=>{
+  const nombre = document.getElementById("catNombre").value.trim();
+  const id = document.getElementById("catId").value.trim();
+  const coins = parseInt(document.getElementById("catCoins").value) || 0;
+  if(!nombre || !id){
+    alert("Completá al menos el nombre y el ID.");
+    return;
+  }
+  set(ref(database, "catalogoRegalos/" + id), { nombre, coins })
+    .then(()=>{
+      document.getElementById("catNombre").value = "";
+      document.getElementById("catId").value = "";
+      document.getElementById("catCoins").value = "";
+    })
+    .catch(err => alert("❌ No se pudo agregar: " + err.message));
+};
+
+iniciarCatalogo();
 
 const moveables = {};
 let seleccionada = null;
@@ -289,6 +406,7 @@ function crearBoxTexto(id, datos){
   box.dataset.tipo = "texto";
   box.dataset.contador = datos.contador ? "true" : "false";
   box.dataset.nombreRegalo = datos.nombreRegalo || "";
+  box.dataset.regaloId = datos.regaloId || "";
   box.style.left = datos.left; box.style.top = datos.top;
   box.style.width = datos.width; box.style.height = datos.height;
   if(datos.contador) box.classList.add("es-contador");
@@ -316,6 +434,8 @@ function editarBoxTexto(box){
   modalEditarTexto.placeholder = esContador ? "El valor lo maneja el contador automáticamente" : "";
   modalEditarContador.checked = esContador;
   modalEditarNombreRegalo.value = box.dataset.nombreRegalo || "";
+  modalEditarIdRegalo.value = box.dataset.regaloId || "";
+  modalEditarBuscarRegalo.value = "";
   actualizarVisibilidadNombreRegalo();
   modalEditarFondo.style.display = "flex";
 }
@@ -409,7 +529,8 @@ document.getElementById("guardar").onclick = ()=>{
         // para no pisar el contador en vivo al recargar el diseño.
         contenido: esContador ? "0" : contenido.textContent,
         contador: esContador,
-        nombreRegalo: box.dataset.nombreRegalo || ""
+        nombreRegalo: box.dataset.nombreRegalo || "",
+        regaloId: box.dataset.regaloId || ""
       };
     } else {
       const iframe = box.querySelector("iframe");
@@ -433,7 +554,22 @@ const modalEditarFondo = document.getElementById("modalEditarFondo");
 const modalEditarTexto = document.getElementById("modalEditarTexto");
 const modalEditarContador = document.getElementById("modalEditarContador");
 const modalEditarNombreRegalo = document.getElementById("modalEditarNombreRegalo");
+const modalEditarIdRegalo = document.getElementById("modalEditarIdRegalo");
+const modalEditarBuscarRegalo = document.getElementById("modalEditarBuscarRegalo");
 const modalEditarNombreRegaloWrap = document.getElementById("modalEditarNombreRegaloWrap");
+
+// Al elegir una sugerencia del catálogo (formato "Nombre — ID 1234 (N monedas)"),
+// autocompleta nombre + ID. Si el texto no matchea ninguna entrada del
+// catálogo, no hace nada — el usuario puede seguir escribiendo nombre/ID
+// a mano (por ejemplo un regalo nuevo que buscó directo en Tikfinity).
+modalEditarBuscarRegalo.addEventListener("input", ()=>{
+  const m = modalEditarBuscarRegalo.value.match(/—\s*ID\s*(\d+)/);
+  if(m && catalogo[m[1]]){
+    modalEditarNombreRegalo.value = catalogo[m[1]].nombre;
+    modalEditarIdRegalo.value = m[1];
+    modalEditarBuscarRegalo.value = "";
+  }
+});
 
 function actualizarVisibilidadNombreRegalo(){
   modalEditarNombreRegaloWrap.style.display = modalEditarContador.checked ? "flex" : "none";
@@ -457,6 +593,7 @@ document.getElementById("modalEditarGuardar").onclick = ()=>{
 
   box.dataset.contador = esContador ? "true" : "false";
   box.dataset.nombreRegalo = esContador ? modalEditarNombreRegalo.value.trim() : "";
+  box.dataset.regaloId = esContador ? modalEditarIdRegalo.value.trim() : "";
   box.classList.toggle("es-contador", esContador);
 
   if(!esContador){
@@ -490,7 +627,8 @@ document.getElementById("test").onclick = ()=>{
     const opt = document.createElement("option");
     opt.value = box.id;
     const nr = box.dataset.nombreRegalo;
-    opt.textContent = nr ? `🎁 ${nr} (${box.id})` : `⚠ sin nombre (${box.id})`;
+    const rid = box.dataset.regaloId;
+    opt.textContent = nr ? `🎁 ${nr} · ID ${rid || "?"} (${box.id})` : `⚠ sin nombre (${box.id})`;
     modalSelect.appendChild(opt);
   });
   modalNombreRegalo.value = "";
@@ -502,15 +640,23 @@ document.getElementById("modalCancelar").onclick = ()=>{ modalFondo.style.displa
 
 document.getElementById("modalAplicar").onclick = ()=>{
   const cantidad = parseInt(modalCantidad.value) || 0;
-  const nombreEscrito = modalNombreRegalo.value.trim();
+  const buscado = modalNombreRegalo.value.trim();
   let box = null;
 
-  if(nombreEscrito){
-    const clave = nombreEscrito.toLowerCase();
+  if(buscado){
+    // Solo funciona si se eligió una sugerencia real del datalist
+    // (formato "Nombre — ID 1234 (N monedas)") — de ahí sacamos el ID
+    // y buscamos la caja que tenga ese mismo regaloId asignado.
+    const m = buscado.match(/—\s*ID\s*(\d+)/);
+    if(!m){
+      alert("⚠ Elegí una opción de la lista de sugerencias (o dejá el campo vacío y elegí la caja abajo).");
+      return;
+    }
+    const id = m[1];
     const cajasTexto = document.querySelectorAll('.box[data-tipo="texto"][data-contador="true"]');
-    box = Array.from(cajasTexto).find(b=>(b.dataset.nombreRegalo||"").toLowerCase()===clave);
+    box = Array.from(cajasTexto).find(b => b.dataset.regaloId === id);
     if(!box){
-      alert(`⚠ Ninguna caja tiene asignado el regalo "${nombreEscrito}".`);
+      alert(`⚠ Ninguna caja tiene asignado el ID ${id}.`);
       return;
     }
   } else {
