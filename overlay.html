@@ -96,6 +96,37 @@ function registrarRegalo(giftId, cantidad){
 }
 
 // ═══════════════════════════════════════════════════════
+//  FIX: DEDUPE DE EVENTOS DE REGALO
+//  Evita contar dos veces el mismo evento "final" si Tikfinity lo
+//  reenvía (por ejemplo tras una reconexión del WebSocket). Usa msgId
+//  si el payload lo trae; si no, usa giftId+cantidad dentro de una
+//  ventana corta de tiempo como respaldo.
+// ═══════════════════════════════════════════════════════
+const VENTANA_DEDUPE_MS = 4000;
+const eventosRecientes = new Map(); // clave -> timestamp
+
+function esEventoDuplicado(giftId, cantidad, msgId){
+  const ahora = Date.now();
+  for(const [clave, t] of eventosRecientes){
+    if(ahora - t > VENTANA_DEDUPE_MS) eventosRecientes.delete(clave);
+  }
+  const clave = (msgId !== null && msgId !== undefined) ? `id:${msgId}` : `combo:${giftId}:${cantidad}`;
+  if(eventosRecientes.has(clave)) return true;
+  eventosRecientes.set(clave, ahora);
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════
+//  FIX: DETECTOR DE FALLO SILENCIOSO (punto 2 del informe)
+//  Si pasan muchos regalos seguidos sin que NINGUNO llegue a
+//  "terminado", probablemente Tikfinity cambió el formato del
+//  payload y el filtro de repeatEnd/repeat_end ya no lo reconoce.
+//  Avisamos una sola vez por racha para no inundar la consola.
+// ═══════════════════════════════════════════════════════
+const UMBRAL_ALERTA_SIN_FINAL = 40;
+let mensajesSinFinalSeguidos = 0;
+
+// ═══════════════════════════════════════════════════════
 //  WEBSOCKET — Tikfinity Desktop (puerto 21213)
 // ═══════════════════════════════════════════════════════
 const WS_URL = "ws://127.0.0.1:21213/";
@@ -146,9 +177,20 @@ function conectarTikfinity(){
     // true  = regalo terminado → contar
     const terminado = g.repeatEnd ?? g.repeat_end ?? d.repeatEnd ?? d.repeat_end ?? false;
     if(!terminado){
+      // FIX (punto 2): avisar si nunca llega ningún "final" tras muchos
+      // mensajes seguidos — señal de que el formato del payload cambió.
+      mensajesSinFinalSeguidos++;
+      if(mensajesSinFinalSeguidos === UMBRAL_ALERTA_SIN_FINAL){
+        console.warn(
+          `⚠ [Posible cambio de formato] Van ${UMBRAL_ALERTA_SIN_FINAL} regalos seguidos sin ningún "final". ` +
+          `Si los contadores dejaron de moverse, revisá el campo repeatEnd/repeat_end en este mensaje real:`,
+          JSON.stringify(msg)
+        );
+      }
       console.log("[En progreso, ignorando]");
       return;
     }
+    mensajesSinFinalSeguidos = 0;
 
     // ID real del regalo — esto es lo único que usamos para el matching
     const giftId = g.giftId ?? g.gift_id ?? d.giftId ?? d.gift_id ?? msg.giftId ?? msg.gift_id;
@@ -161,6 +203,13 @@ function conectarTikfinity(){
 
     if(giftId === undefined || giftId === null){
       console.log("[Regalo sin ID, ignorado]", JSON.stringify(msg));
+      return;
+    }
+
+    // FIX (punto 3): descartar si es un evento "final" duplicado
+    const msgId = msg.msgId ?? msg.msg_id ?? d.msgId ?? d.msg_id ?? g.msgId ?? g.msg_id ?? null;
+    if(esEventoDuplicado(giftId, cantidad, msgId)){
+      console.log(`[Duplicado ignorado] ID:${giftId} x${cantidad}`);
       return;
     }
 
@@ -239,19 +288,24 @@ function crearBoxTexto(id, datos){
   contenido.textContent = datos.contenido || "";
   box.appendChild(contenido);
   canvas.appendChild(box);
-  cajasCreadas[id] = { box, tipo:"texto" };
 
   // FIX: siempre escucha textoLive/{id} para sincronizar el valor real
   // desde Firebase, independiente del contenido guardado en diseño.
   // Esto asegura que los contadores siempre muestren el valor correcto
   // incluso si el editor guardó "0" en diseño/{id}/contenido.
-  onValue(ref(database, "textoLive/" + id), (snapshot)=>{
+  // FIX (punto 7): guardamos la función de desuscripción que devuelve
+  // onValue() para poder cerrarla cuando la caja se elimine del diseño.
+  // Sin esto, cada caja borrada dejaba un listener escuchando para
+  // siempre en segundo plano durante toda la sesión del overlay.
+  const unsub = onValue(ref(database, "textoLive/" + id), (snapshot)=>{
     if(snapshot.exists()){
       const val = snapshot.val();
       contenido.textContent = val;
       contadores[id] = parseInt(val) || 0;
     }
   });
+
+  cajasCreadas[id] = { box, tipo:"texto", unsub };
 }
 
 function actualizarBoxTexto(box, datos){
@@ -273,6 +327,9 @@ onValue(ref(database, "diseño"), (snapshot)=>{
   // Eliminar cajas que ya no existen en Firebase
   Object.keys(cajasCreadas).forEach(id=>{
     if(!idsNuevos.includes(id)){
+      // FIX (punto 7): cerrar el listener de textoLive/{id} antes de
+      // borrar la caja, si no queda escuchando cambios para siempre
+      if(typeof cajasCreadas[id].unsub === "function") cajasCreadas[id].unsub();
       cajasCreadas[id].box.remove();
       delete cajasCreadas[id];
     }
