@@ -82,17 +82,17 @@ let mapaRegalos = {};
 // ═══════════════════════════════════════════════════════
 const contadores = {};
 
-function registrarRegalo(nombreRegalo, cantidad){
-  const clave = nombreRegalo.toLowerCase().trim();
+function registrarRegalo(giftId, cantidad){
+  const clave = String(giftId);
   const cajaId = mapaRegalos[clave];
   if(!cajaId){
-    console.log(`[Regalo no mapeado] "${nombreRegalo}"`);
+    console.log(`[Regalo no mapeado] ID:${giftId}`);
     return;
   }
   contadores[cajaId] = (contadores[cajaId] || 0) + cantidad;
   set(ref(database, "textoLive/" + cajaId), String(contadores[cajaId]))
     .catch(err => console.warn("Firebase write error:", err));
-  console.log(`[Contador actualizado] "${nombreRegalo}" → ${contadores[cajaId]}`);
+  console.log(`[Contador actualizado] ID:${giftId} → ${contadores[cajaId]}`);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -134,25 +134,38 @@ function conectarTikfinity(){
     // FIX: los datos reales vienen dentro de msg.data o directo en msg
     const d = msg.data || msg;
 
-    // FILTRO CLAVE: solo contar cuando repeatEnd === true
-    // false = regalo en progreso → ignorar
-    // true  = regalo terminado  → contar
-    const terminado = d.repeatEnd ?? false;
+    // FIX: el objeto del regalo puede venir anidado en d.gift (payload real
+    // confirmado: {"gift":{"gift_id":...,"repeat_count":...,"repeat_end":...}})
+    // o directo en d/msg con otros nombres de campo según la versión de
+    // Tikfinity. Contemplamos ambos casos y ambos formatos (camelCase y
+    // snake_case).
+    const g = d.gift || msg.gift || d;
+
+    // FILTRO CLAVE: solo contar cuando repeat_end/repeatEnd === true
+    // false = regalo en progreso (o parte de un combo que sigue) → ignorar
+    // true  = regalo terminado → contar
+    const terminado = g.repeatEnd ?? g.repeat_end ?? d.repeatEnd ?? d.repeat_end ?? false;
     if(!terminado){
       console.log("[En progreso, ignorando]");
       return;
     }
 
-    const nombre = d.giftName || d.name || msg.giftName || msg.name || "";
+    // ID real del regalo — esto es lo único que usamos para el matching
+    const giftId = g.giftId ?? g.gift_id ?? d.giftId ?? d.gift_id ?? msg.giftId ?? msg.gift_id;
+
     const cantidad = parseInt(
-      d.repeatCount ?? d.count ?? d.amount ??
-      msg.repeatCount ?? msg.count ?? 1
+      g.repeatCount ?? g.repeat_count ??
+      d.repeatCount ?? d.repeat_count ??
+      msg.repeatCount ?? msg.repeat_count ?? 1
     ) || 1;
 
-    if(!nombre) return;
+    if(giftId === undefined || giftId === null){
+      console.log("[Regalo sin ID, ignorado]", JSON.stringify(msg));
+      return;
+    }
 
-    console.log(`[Regalo FINAL] ${nombre} x${cantidad}`);
-    registrarRegalo(nombre, cantidad);
+    console.log(`[Regalo FINAL] ID:${giftId} x${cantidad}`);
+    registrarRegalo(giftId, cantidad);
   };
 
   ws.onerror = (err) => {
@@ -283,12 +296,14 @@ onValue(ref(database, "diseño"), (snapshot)=>{
     }
   });
 
-  // Reconstruir mapa de regalos desde Firebase
+  // Reconstruir mapa de regalos desde Firebase — la clave ahora es el ID
+  // del regalo (regaloId), no el nombre. El nombre solo queda como
+  // referencia visual en el editor.
   const nuevoMapa = {};
   idsNuevos.forEach(id=>{
     const datos = diseño[id];
-    if(datos.tipo === "texto" && datos.contador && datos.nombreRegalo){
-      nuevoMapa[datos.nombreRegalo.toLowerCase().trim()] = id;
+    if(datos.tipo === "texto" && datos.contador && datos.regaloId){
+      nuevoMapa[String(datos.regaloId)] = id;
     }
   });
   mapaRegalos = nuevoMapa;
