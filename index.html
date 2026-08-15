@@ -108,8 +108,10 @@ iframe{
 #reset{ background:#795548; color:white; }
 #eliminar{ background:#f44336; color:white; }
 
-/* MODAL TEST */
-#modalFondo{
+/* FIX (punto 8): estilos de modal compartidos por los 3 modales
+   (Test, Catálogo, Editar) en vez de repetir el mismo bloque inline
+   en cada uno. Solo el ancho/alto máximo varía por modal (ver abajo). */
+.modal-fondo{
   display:none;
   position:fixed;
   left:0; top:0; width:100%; height:100%;
@@ -118,26 +120,47 @@ iframe{
   align-items:center;
   justify-content:center;
 }
-#modalCaja{
+.modal-caja{
   background:white;
   border-radius:10px;
   padding:24px;
-  width:300px;
   display:flex;
   flex-direction:column;
   gap:12px;
   font-family:sans-serif;
 }
-#modalCaja h3{ margin:0 0 4px 0; }
-#modalCaja select, #modalCaja input{ padding:8px; font-size:16px; }
-#modalBotones{ display:flex; gap:8px; justify-content:flex-end; }
-#modalBotones button{
+.modal-caja h3{ margin:0; }
+.modal-caja select, .modal-caja input{ padding:8px; font-size:16px; }
+.modal-botones{ display:flex; gap:8px; justify-content:flex-end; }
+.modal-botones button{
   padding:10px 14px; border:none; border-radius:6px;
   font-weight:bold; cursor:pointer;
 }
-#modalAplicar{ background:#4CAF50; color:white; }
-#modalCancelar{ background:#ccc; }
+.modal-btn-confirmar{ background:#4CAF50; color:white; }
+.modal-btn-cancelar{ background:#ccc; }
+
+#modalCaja{ width:300px; }
+#modalCatalogoCaja{ width:360px; max-height:82vh; overflow-y:auto; gap:10px; }
+#modalEditarCaja{ width:320px; }
 #modalEditarCaja label{ display:flex; align-items:center; gap:8px; font-size:15px; }
+
+.catalogo-info{ font-size:13px; color:#666; }
+.catalogo-input{ padding:8px; font-size:15px; }
+.catalogo-fila-ids{ display:flex; gap:8px; }
+.catalogo-fila-ids input{ flex:1; }
+#listaCatalogo{
+  overflow-y:auto; max-height:280px; display:flex; flex-direction:column;
+  gap:6px; border-top:1px solid #eee; border-bottom:1px solid #eee; padding:8px 0;
+}
+#listaCatalogo em{ color:#999; }
+.fila-catalogo{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:6px 4px; border-bottom:1px solid #f0f0f0; font-size:14px;
+}
+.fila-catalogo button{
+  border:none; background:#f44336; color:white; border-radius:4px;
+  padding:4px 10px; cursor:pointer; flex-shrink:0;
+}
 </style>
 </head>
 <body>
@@ -161,8 +184,8 @@ iframe{
 </div>
 
 <!-- MODAL TEST -->
-<div id="modalFondo">
-  <div id="modalCaja">
+<div id="modalFondo" class="modal-fondo">
+  <div id="modalCaja" class="modal-caja">
     <h3>Simular regalo</h3>
     <label for="modalNombreRegalo">Buscar regalo en el catálogo:</label>
     <input type="text" id="modalNombreRegalo" list="listaRegalos" placeholder="Escribe para buscar (deja vacío para elegir caja abajo)">
@@ -170,53 +193,53 @@ iframe{
     <select id="modalSelect"></select>
     <label for="modalCantidad">Cantidad a sumar:</label>
     <input type="number" id="modalCantidad" value="1" min="1">
-    <div id="modalBotones">
-      <button id="modalCancelar">Cancelar</button>
-      <button id="modalAplicar">Aplicar</button>
+    <div class="modal-botones">
+      <button id="modalCancelar" class="modal-btn-cancelar">Cancelar</button>
+      <button id="modalAplicar" class="modal-btn-confirmar">Aplicar</button>
     </div>
   </div>
 </div>
 
 <!-- MODAL CATÁLOGO DE REGALOS -->
-<div id="modalCatalogoFondo" style="display:none; position:fixed; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,.6); z-index:2000; align-items:center; justify-content:center;">
-  <div id="modalCatalogoCaja" style="background:white; border-radius:10px; padding:24px; width:360px; max-height:82vh; display:flex; flex-direction:column; gap:10px; font-family:sans-serif;">
-    <h3 style="margin:0;">📖 Catálogo de regalos</h3>
-    <div style="font-size:13px; color:#666;">Estos son los regalos conocidos, con su ID real de TikTok. Se usan para autocompletar al editar una caja.</div>
-    <div id="listaCatalogo" style="overflow-y:auto; max-height:280px; display:flex; flex-direction:column; gap:6px; border-top:1px solid #eee; border-bottom:1px solid #eee; padding:8px 0;"></div>
+<div id="modalCatalogoFondo" class="modal-fondo">
+  <div id="modalCatalogoCaja" class="modal-caja">
+    <h3>📖 Catálogo de regalos</h3>
+    <div class="catalogo-info">Estos son los regalos conocidos, con su ID real de TikTok. Se usan para autocompletar al editar una caja.</div>
+    <div id="listaCatalogo"></div>
     <strong>Agregar nuevo</strong>
-    <input type="text" id="catNombre" placeholder="Nombre (ej: Rosa)" style="padding:8px; font-size:15px;">
-    <div style="display:flex; gap:8px;">
-      <input type="number" id="catId" placeholder="ID (ej: 5655)" style="padding:8px; font-size:15px; flex:1;">
-      <input type="number" id="catCoins" placeholder="Monedas" style="padding:8px; font-size:15px; flex:1;">
+    <input type="text" id="catNombre" class="catalogo-input" placeholder="Nombre (ej: Rosa)">
+    <div class="catalogo-fila-ids">
+      <input type="number" id="catId" class="catalogo-input" placeholder="ID (ej: 5655)">
+      <input type="number" id="catCoins" class="catalogo-input" placeholder="Monedas">
     </div>
-    <div style="display:flex; gap:8px; justify-content:flex-end;">
-      <button id="catCerrar" style="padding:10px 14px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; background:#ccc;">Cerrar</button>
-      <button id="catAgregar" style="padding:10px 14px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; background:#4CAF50; color:white;">➕ Agregar</button>
+    <div class="modal-botones">
+      <button id="catCerrar" class="modal-btn-cancelar">Cerrar</button>
+      <button id="catAgregar" class="modal-btn-confirmar">➕ Agregar</button>
     </div>
   </div>
 </div>
 
 <!-- MODAL EDITAR TEXTO -->
-<div id="modalEditarFondo" style="display:none; position:fixed; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,.6); z-index:2000; align-items:center; justify-content:center;">
-  <div id="modalEditarCaja" style="background:white; border-radius:10px; padding:24px; width:320px; display:flex; flex-direction:column; gap:12px; font-family:sans-serif;">
-    <h3 style="margin:0 0 4px 0;">Editar caja de texto</h3>
+<div id="modalEditarFondo" class="modal-fondo">
+  <div id="modalEditarCaja" class="modal-caja">
+    <h3>Editar caja de texto</h3>
     <label for="modalEditarTexto">Texto:</label>
-    <input type="text" id="modalEditarTexto" style="padding:8px; font-size:16px;">
+    <input type="text" id="modalEditarTexto">
     <label>
       <input type="checkbox" id="modalEditarContador">
       Es contador de regalo (participa en TEST y RESET)
     </label>
     <div id="modalEditarNombreRegaloWrap" style="display:flex; flex-direction:column; gap:4px;">
       <label for="modalEditarBuscarRegalo">Buscar en catálogo:</label>
-      <input type="text" id="modalEditarBuscarRegalo" list="listaRegalos" placeholder="Escribe para buscar..." style="padding:8px; font-size:16px;">
+      <input type="text" id="modalEditarBuscarRegalo" list="listaRegalos" placeholder="Escribe para buscar...">
       <label for="modalEditarNombreRegalo">Nombre del regalo (referencia):</label>
-      <input type="text" id="modalEditarNombreRegalo" placeholder="Ej: Rosa" style="padding:8px; font-size:16px;">
+      <input type="text" id="modalEditarNombreRegalo" placeholder="Ej: Rosa">
       <label for="modalEditarIdRegalo">ID del regalo (esto es lo que se usa para contar):</label>
-      <input type="number" id="modalEditarIdRegalo" placeholder="Ej: 5655" style="padding:8px; font-size:16px;">
+      <input type="number" id="modalEditarIdRegalo" placeholder="Ej: 5655">
     </div>
-    <div style="display:flex; gap:8px; justify-content:flex-end;">
-      <button id="modalEditarCancelar" style="padding:10px 14px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; background:#ccc;">Cancelar</button>
-      <button id="modalEditarGuardar" style="padding:10px 14px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; background:#4CAF50; color:white;">Guardar</button>
+    <div class="modal-botones">
+      <button id="modalEditarCancelar" class="modal-btn-cancelar">Cancelar</button>
+      <button id="modalEditarGuardar" class="modal-btn-confirmar">Guardar</button>
     </div>
   </div>
 </div>
@@ -265,15 +288,25 @@ async function iniciarCatalogo(){
   }
 }
 
+// FIX (punto 5): mapa texto-visible → ID de regalo, se reconstruye
+// junto con el datalist. Reemplaza el parseo por regex que dependía
+// de que el texto de la sugerencia mantuviera siempre el mismo
+// formato exacto ("Nombre — ID 1234 (...)"); si ese formato cambia,
+// ahora solo hay que tocarlo en un lugar (esta función).
+let mapaTextoARegaloId = {};
+
 function actualizarDatalist(){
   const listaRegalos = document.getElementById("listaRegalos");
   listaRegalos.innerHTML = "";
+  mapaTextoARegaloId = {};
   Object.entries(catalogo)
     .sort((a,b)=> a[1].nombre.localeCompare(b[1].nombre))
     .forEach(([id, info])=>{
       const opt = document.createElement("option");
       const monedas = Number(info.coins) || 0;
-      opt.value = `${info.nombre} — ID ${id} (${monedas} moneda${monedas === 1 ? "" : "s"})`;
+      const texto = `${info.nombre} — ID ${id} (${monedas} moneda${monedas === 1 ? "" : "s"})`;
+      opt.value = texto;
+      mapaTextoARegaloId[texto] = id;
       listaRegalos.appendChild(opt);
     });
 }
@@ -283,19 +316,18 @@ function renderizarListaCatalogo(){
   cont.innerHTML = "";
   const entradas = Object.entries(catalogo).sort((a,b)=> a[1].nombre.localeCompare(b[1].nombre));
   if(entradas.length === 0){
-    cont.innerHTML = "<em style='color:#999'>Catálogo vacío. Agregá el primero abajo.</em>";
+    cont.innerHTML = "<em>Catálogo vacío. Agregá el primero abajo.</em>";
     return;
   }
   entradas.forEach(([id, info])=>{
     const monedas = Number(info.coins) || 0;
     const fila = document.createElement("div");
-    fila.style.cssText = "display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 4px; border-bottom:1px solid #f0f0f0; font-size:14px;";
+    fila.className = "fila-catalogo";
     const texto = document.createElement("span");
     texto.textContent = `🎁 ${info.nombre} — ID ${id} (${monedas} moneda${monedas === 1 ? "" : "s"})`;
     const btnDel = document.createElement("button");
     btnDel.textContent = "🗑";
     btnDel.title = "Eliminar del catálogo";
-    btnDel.style.cssText = "border:none; background:#f44336; color:white; border-radius:4px; padding:4px 10px; cursor:pointer; flex-shrink:0;";
     btnDel.onclick = ()=>{
       if(confirm(`¿Eliminar "${info.nombre}" (ID ${id}) del catálogo? (Las cajas que ya lo usan no se ven afectadas)`)){
         remove(ref(database, "catalogoRegalos/" + id))
@@ -328,6 +360,18 @@ document.getElementById("catAgregar").onclick = ()=>{
     alert("Completá al menos el nombre y el ID.");
     return;
   }
+
+  // FIX (punto 4): avisar antes de sobreescribir un ID que ya existe
+  const existente = catalogo[id];
+  if(existente){
+    const monedasExistente = Number(existente.coins) || 0;
+    const confirmado = confirm(
+      `⚠ El ID ${id} ya existe como "${existente.nombre}" (${monedasExistente} moneda${monedasExistente === 1 ? "" : "s"}).\n` +
+      `¿Reemplazarlo por "${nombre}" (${coins} moneda${coins === 1 ? "" : "s"})?`
+    );
+    if(!confirmado) return;
+  }
+
   set(ref(database, "catalogoRegalos/" + id), { nombre, coins })
     .then(()=>{
       document.getElementById("catNombre").value = "";
@@ -352,7 +396,15 @@ function ajustarEditor(){
   );
   canvas.style.transform = `scale(${escala})`;
 }
-window.addEventListener("resize", ajustarEditor);
+// FIX (punto 9): mismo freno con requestAnimationFrame que ya tiene
+// ajustarCanvas() en overlay.html, para no recalcular en cada pixel
+// de un resize continuo.
+let resizeEditorPendiente = false;
+window.addEventListener("resize", ()=>{
+  if(resizeEditorPendiente) return;
+  resizeEditorPendiente = true;
+  requestAnimationFrame(()=>{ ajustarEditor(); resizeEditorPendiente = false; });
+});
 ajustarEditor();
 
 function actualizarEscalaContenido(box){
@@ -563,10 +615,10 @@ const modalEditarNombreRegaloWrap = document.getElementById("modalEditarNombreRe
 // catálogo, no hace nada — el usuario puede seguir escribiendo nombre/ID
 // a mano (por ejemplo un regalo nuevo que buscó directo en Tikfinity).
 modalEditarBuscarRegalo.addEventListener("input", ()=>{
-  const m = modalEditarBuscarRegalo.value.match(/—\s*ID\s*(\d+)/);
-  if(m && catalogo[m[1]]){
-    modalEditarNombreRegalo.value = catalogo[m[1]].nombre;
-    modalEditarIdRegalo.value = m[1];
+  const id = mapaTextoARegaloId[modalEditarBuscarRegalo.value];
+  if(id && catalogo[id]){
+    modalEditarNombreRegalo.value = catalogo[id].nombre;
+    modalEditarIdRegalo.value = id;
     modalEditarBuscarRegalo.value = "";
   }
 });
@@ -644,15 +696,14 @@ document.getElementById("modalAplicar").onclick = ()=>{
   let box = null;
 
   if(buscado){
-    // Solo funciona si se eligió una sugerencia real del datalist
-    // (formato "Nombre — ID 1234 (N monedas)") — de ahí sacamos el ID
-    // y buscamos la caja que tenga ese mismo regaloId asignado.
-    const m = buscado.match(/—\s*ID\s*(\d+)/);
-    if(!m){
+    // FIX (punto 5): se busca el ID en el mapa texto→ID construido
+    // junto al datalist, en vez de parsear el texto visible con un
+    // regex — ya no depende de que el formato del texto no cambie.
+    const id = mapaTextoARegaloId[buscado];
+    if(!id){
       alert("⚠ Elegí una opción de la lista de sugerencias (o dejá el campo vacío y elegí la caja abajo).");
       return;
     }
-    const id = m[1];
     const cajasTexto = document.querySelectorAll('.box[data-tipo="texto"][data-contador="true"]');
     box = Array.from(cajasTexto).find(b => b.dataset.regaloId === id);
     if(!box){
