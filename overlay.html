@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;700&family=Press+Start+2P&family=Rajdhani:wght@400;700&family=Exo+2:wght@400;700&family=Roboto:wght@400;700&family=Anton&family=Bangers&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 <style>
 html,body{
   margin:0; padding:0;
@@ -35,11 +36,19 @@ iframe{
 }
 .texto-contenido{
   width:100%; height:100%;
-  background:#000; color:#fff;
-  display:flex; align-items:center; justify-content:center;
-  text-align:center; box-sizing:border-box; padding:10px;
-  font-size:48px; font-weight:bold;
-  word-break:break-word; line-height:1.2;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  box-sizing:border-box;
+  padding:10px;
+  font-size:48px;
+  font-weight:bold;
+  word-break:break-word;
+  line-height:1.2;
+  /* Estilos base — se sobreescriben desde Firebase (campo estilos) */
+  background:#000;
+  color:#fff;
 }
 #estado-tikfinity{
   position:fixed;
@@ -77,8 +86,6 @@ let mapaRegalos = {};
 
 // ═══════════════════════════════════════════════════════
 //  CONTADORES EN MEMORIA
-//  Se sincronizan desde Firebase al cargar cada caja,
-//  así nunca suman desde 0 si ya había un valor previo.
 // ═══════════════════════════════════════════════════════
 const contadores = {};
 
@@ -96,14 +103,10 @@ function registrarRegalo(giftId, cantidad){
 }
 
 // ═══════════════════════════════════════════════════════
-//  FIX: DEDUPE DE EVENTOS DE REGALO
-//  Evita contar dos veces el mismo evento "final" si Tikfinity lo
-//  reenvía (por ejemplo tras una reconexión del WebSocket). Usa msgId
-//  si el payload lo trae; si no, usa giftId+cantidad dentro de una
-//  ventana corta de tiempo como respaldo.
+//  DEDUPE DE EVENTOS DE REGALO
 // ═══════════════════════════════════════════════════════
 const VENTANA_DEDUPE_MS = 4000;
-const eventosRecientes = new Map(); // clave -> timestamp
+const eventosRecientes = new Map();
 
 function esEventoDuplicado(giftId, cantidad, msgId){
   const ahora = Date.now();
@@ -117,11 +120,7 @@ function esEventoDuplicado(giftId, cantidad, msgId){
 }
 
 // ═══════════════════════════════════════════════════════
-//  FIX: DETECTOR DE FALLO SILENCIOSO (punto 2 del informe)
-//  Si pasan muchos regalos seguidos sin que NINGUNO llegue a
-//  "terminado", probablemente Tikfinity cambió el formato del
-//  payload y el filtro de repeatEnd/repeat_end ya no lo reconoce.
-//  Avisamos una sola vez por racha para no inundar la consola.
+//  DETECTOR DE FALLO SILENCIOSO
 // ═══════════════════════════════════════════════════════
 const UMBRAL_ALERTA_SIN_FINAL = 40;
 let mensajesSinFinalSeguidos = 0;
@@ -156,29 +155,16 @@ function conectarTikfinity(){
     let msg;
     try { msg = JSON.parse(event.data); } catch(e){ return; }
 
-    // Tikfinity manda el tipo en msg.type o msg.event
     const tipo = (msg.type || msg.event || "").toLowerCase();
     if(tipo !== "gift") return;
 
     console.log("[Tikfinity WS] Regalo recibido:", JSON.stringify(msg));
 
-    // FIX: los datos reales vienen dentro de msg.data o directo en msg
     const d = msg.data || msg;
-
-    // FIX: el objeto del regalo puede venir anidado en d.gift (payload real
-    // confirmado: {"gift":{"gift_id":...,"repeat_count":...,"repeat_end":...}})
-    // o directo en d/msg con otros nombres de campo según la versión de
-    // Tikfinity. Contemplamos ambos casos y ambos formatos (camelCase y
-    // snake_case).
     const g = d.gift || msg.gift || d;
 
-    // FILTRO CLAVE: solo contar cuando repeat_end/repeatEnd === true
-    // false = regalo en progreso (o parte de un combo que sigue) → ignorar
-    // true  = regalo terminado → contar
     const terminado = g.repeatEnd ?? g.repeat_end ?? d.repeatEnd ?? d.repeat_end ?? false;
     if(!terminado){
-      // FIX (punto 2): avisar si nunca llega ningún "final" tras muchos
-      // mensajes seguidos — señal de que el formato del payload cambió.
       mensajesSinFinalSeguidos++;
       if(mensajesSinFinalSeguidos === UMBRAL_ALERTA_SIN_FINAL){
         console.warn(
@@ -192,9 +178,7 @@ function conectarTikfinity(){
     }
     mensajesSinFinalSeguidos = 0;
 
-    // ID real del regalo — esto es lo único que usamos para el matching
     const giftId = g.giftId ?? g.gift_id ?? d.giftId ?? d.gift_id ?? msg.giftId ?? msg.gift_id;
-
     const cantidad = parseInt(
       g.repeatCount ?? g.repeat_count ??
       d.repeatCount ?? d.repeat_count ??
@@ -206,7 +190,6 @@ function conectarTikfinity(){
       return;
     }
 
-    // FIX (punto 3): descartar si es un evento "final" duplicado
     const msgId = msg.msgId ?? msg.msg_id ?? d.msgId ?? d.msg_id ?? g.msgId ?? g.msg_id ?? null;
     if(esEventoDuplicado(giftId, cantidad, msgId)){
       console.log(`[Duplicado ignorado] ID:${giftId} x${cantidad}`);
@@ -226,6 +209,45 @@ function conectarTikfinity(){
     console.log("[Tikfinity WS] Cerrado — reintentando en 5s…");
     reconectarTimer = setTimeout(conectarTikfinity, 5000);
   };
+}
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS DE ESTILOS
+// ═══════════════════════════════════════════════════════
+function hexToRgb(hex){
+  const h = hex.replace("#","");
+  const r = parseInt(h.slice(0,2),16);
+  const g = parseInt(h.slice(2,4),16);
+  const b = parseInt(h.slice(4,6),16);
+  return {r,g,b};
+}
+
+function aplicarEstilosAContenido(contenido, estilos){
+  if(!estilos) return;
+  const font    = estilos.font    || "sans-serif";
+  const size    = parseInt(estilos.size)  || 48;
+  const bold    = estilos.bold    === true || estilos.bold === "true";
+  const italic  = estilos.italic  === true || estilos.italic === "true";
+  const shadow  = estilos.shadow  === true || estilos.shadow === "true";
+  const color   = estilos.color   || "#ffffff";
+  const bgcolor = estilos.bgcolor || "#000000";
+  const alpha   = estilos.alpha   !== undefined ? parseInt(estilos.alpha) : 100;
+  const align   = estilos.align   || "center";
+  const valign  = estilos.valign  || "center";
+
+  const {r,g,b} = hexToRgb(bgcolor);
+  const a = alpha / 100;
+
+  contenido.style.fontFamily     = font;
+  contenido.style.fontSize       = size + "px";
+  contenido.style.fontWeight     = bold   ? "700" : "400";
+  contenido.style.fontStyle      = italic ? "italic" : "normal";
+  contenido.style.textShadow     = shadow ? "2px 2px 8px rgba(0,0,0,0.9)" : "none";
+  contenido.style.color          = color;
+  contenido.style.background     = alpha === 0 ? "transparent" : `rgba(${r},${g},${b},${a})`;
+  contenido.style.textAlign      = align;
+  contenido.style.justifyContent = align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center";
+  contenido.style.alignItems     = valign;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -251,8 +273,6 @@ const cajasCreadas = {};
 function crearBoxIframe(id, datos){
   const box = document.createElement("div");
   box.className = "box"; box.id = id;
-  // FIX: crear iframe con src vacío primero, luego actualizarBoxIframe
-  // lo pone correctamente evitando una petición vacía inicial
   const iframe = document.createElement("iframe");
   iframe.src = "";
   box.appendChild(iframe);
@@ -267,7 +287,6 @@ function actualizarBoxIframe(box, datos){
   const baseWidth  = parseFloat(datos.baseWidth)  || 400;
   const baseHeight = parseFloat(datos.baseHeight) || 150;
   const iframe = box.querySelector("iframe");
-  // Solo actualiza src si cambió, evita recargar el widget innecesariamente
   if(datos.link && iframe.src !== datos.link) iframe.src = datos.link;
   iframe.style.width  = baseWidth  + "px";
   iframe.style.height = baseHeight + "px";
@@ -283,20 +302,14 @@ function crearBoxTexto(id, datos){
 
   const contenido = document.createElement("div");
   contenido.className = "texto-contenido";
-  // Mostramos el contenido del diseño inicialmente;
-  // onValue lo reemplazará con el valor real de textoLive apenas cargue
   contenido.textContent = datos.contenido || "";
   box.appendChild(contenido);
+
+  // Aplicar estilos guardados (si existen)
+  if(datos.estilos) aplicarEstilosAContenido(contenido, datos.estilos);
+
   canvas.appendChild(box);
 
-  // FIX: siempre escucha textoLive/{id} para sincronizar el valor real
-  // desde Firebase, independiente del contenido guardado en diseño.
-  // Esto asegura que los contadores siempre muestren el valor correcto
-  // incluso si el editor guardó "0" en diseño/{id}/contenido.
-  // FIX (punto 7): guardamos la función de desuscripción que devuelve
-  // onValue() para poder cerrarla cuando la caja se elimine del diseño.
-  // Sin esto, cada caja borrada dejaba un listener escuchando para
-  // siempre en segundo plano durante toda la sesión del overlay.
   const unsub = onValue(ref(database, "textoLive/" + id), (snapshot)=>{
     if(snapshot.exists()){
       const val = snapshot.val();
@@ -309,10 +322,11 @@ function crearBoxTexto(id, datos){
 }
 
 function actualizarBoxTexto(box, datos){
-  // Solo actualiza posición y tamaño, NUNCA el contenido
-  // para no pisar el valor del contador en pantalla
   box.style.left = datos.left; box.style.top = datos.top;
   box.style.width = datos.width; box.style.height = datos.height;
+  // Re-aplicar estilos si cambiaron en el editor
+  const contenido = box.querySelector(".texto-contenido");
+  if(contenido && datos.estilos) aplicarEstilosAContenido(contenido, datos.estilos);
 }
 
 // Esperar primer diseño antes de conectar Tikfinity
@@ -327,8 +341,6 @@ onValue(ref(database, "diseño"), (snapshot)=>{
   // Eliminar cajas que ya no existen en Firebase
   Object.keys(cajasCreadas).forEach(id=>{
     if(!idsNuevos.includes(id)){
-      // FIX (punto 7): cerrar el listener de textoLive/{id} antes de
-      // borrar la caja, si no queda escuchando cambios para siempre
       if(typeof cajasCreadas[id].unsub === "function") cajasCreadas[id].unsub();
       cajasCreadas[id].box.remove();
       delete cajasCreadas[id];
@@ -337,9 +349,6 @@ onValue(ref(database, "diseño"), (snapshot)=>{
 
   idsNuevos.forEach(id=>{
     const datos = diseño[id];
-
-    // FIX: ignorar cualquier tipo desconocido (jarron u otros)
-    // para no romper el overlay si quedaron datos viejos en Firebase
     if(datos.tipo !== "texto" && datos.tipo !== "iframe") return;
 
     const existente = cajasCreadas[id];
@@ -353,9 +362,7 @@ onValue(ref(database, "diseño"), (snapshot)=>{
     }
   });
 
-  // Reconstruir mapa de regalos desde Firebase — la clave ahora es el ID
-  // del regalo (regaloId), no el nombre. El nombre solo queda como
-  // referencia visual en el editor.
+  // Reconstruir mapa de regalos
   const nuevoMapa = {};
   idsNuevos.forEach(id=>{
     const datos = diseño[id];
