@@ -78,6 +78,7 @@ iframe{
 
 <script type="module">
 import { database, ref, onValue, set } from "./firebase.js";
+import { aplicarAnimacion, actualizarValorAnimado, detenerAnimacion } from "./animaciones.js";
 
 // ═══════════════════════════════════════════════════════
 //  MAPA DE REGALOS → CAJAS (dinámico desde Firebase)
@@ -302,7 +303,6 @@ function crearBoxTexto(id, datos){
 
   const contenido = document.createElement("div");
   contenido.className = "texto-contenido";
-  contenido.textContent = datos.contenido || "";
   box.appendChild(contenido);
 
   // Aplicar estilos guardados (si existen)
@@ -310,10 +310,13 @@ function crearBoxTexto(id, datos){
 
   canvas.appendChild(box);
 
+  // Aplicar modo de animación (marquee / palabras cambiantes / ninguna)
+  aplicarAnimacion(box, contenido, datos.animacion, datos.contenido || "");
+
   const unsub = onValue(ref(database, "textoLive/" + id), (snapshot)=>{
     if(snapshot.exists()){
       const val = snapshot.val();
-      contenido.textContent = val;
+      actualizarValorAnimado(contenido, val);
       contadores[id] = parseInt(val) || 0;
     }
   });
@@ -327,6 +330,8 @@ function actualizarBoxTexto(box, datos){
   // Re-aplicar estilos si cambiaron en el editor
   const contenido = box.querySelector(".texto-contenido");
   if(contenido && datos.estilos) aplicarEstilosAContenido(contenido, datos.estilos);
+  // Re-aplicar animación (por si el modo/velocidad/palabras cambiaron en el editor)
+  if(contenido) aplicarAnimacion(box, contenido, datos.animacion, contenido.dataset.valorActual);
 }
 
 // Esperar primer diseño antes de conectar Tikfinity
@@ -342,6 +347,7 @@ onValue(ref(database, "diseño"), (snapshot)=>{
   Object.keys(cajasCreadas).forEach(id=>{
     if(!idsNuevos.includes(id)){
       if(typeof cajasCreadas[id].unsub === "function") cajasCreadas[id].unsub();
+      detenerAnimacion(id);
       cajasCreadas[id].box.remove();
       delete cajasCreadas[id];
     }
