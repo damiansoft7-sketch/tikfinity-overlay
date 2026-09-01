@@ -26,6 +26,10 @@ html,body{
   position:absolute;
   overflow:hidden;
 }
+.imagen-contenido{
+  width:100%; height:100%;
+  display:block;
+}
 iframe{
   position:absolute;
   left:0; top:0;
@@ -294,6 +298,36 @@ function actualizarBoxIframe(box, datos){
   iframe.style.transform = `scale(${parseFloat(datos.width)/baseWidth}, ${parseFloat(datos.height)/baseHeight})`;
 }
 
+// ── imagen ──
+function crearBoxImagen(id, datos){
+  const box = document.createElement("div");
+  box.className = "box"; box.id = id;
+  const img = document.createElement("img");
+  img.className = "imagen-contenido";
+  box.appendChild(img);
+  canvas.appendChild(box);
+  actualizarBoxImagen(box, datos);
+
+  // Visibilidad en vivo: ruta aparte "visibilidadImagen/<id>" (mismo patrón que
+  // "textoLive/" para contadores), se aplica al instante sin recargar el diseño.
+  const unsubVisibilidad = onValue(ref(database, "visibilidadImagen/" + id), (snapshot)=>{
+    const visible = snapshot.exists() ? snapshot.val() !== false : true;
+    box.style.display = visible ? "" : "none";
+  });
+
+  cajasCreadas[id] = { box, tipo:"imagen", unsub: unsubVisibilidad };
+}
+
+function actualizarBoxImagen(box, datos){
+  box.style.left = datos.left; box.style.top = datos.top;
+  box.style.width = datos.width; box.style.height = datos.height;
+  const img = box.querySelector(".imagen-contenido");
+  if(img){
+    if(datos.src && img.src !== datos.src) img.src = datos.src;
+    img.style.objectFit = datos.ajuste || "contain";
+  }
+}
+
 // ── texto / contador ──
 function crearBoxTexto(id, datos){
   const box = document.createElement("div");
@@ -355,14 +389,17 @@ onValue(ref(database, "diseño"), (snapshot)=>{
 
   idsNuevos.forEach(id=>{
     const datos = diseño[id];
-    if(datos.tipo !== "texto" && datos.tipo !== "iframe") return;
+    if(datos.tipo !== "texto" && datos.tipo !== "iframe" && datos.tipo !== "imagen") return;
 
     const existente = cajasCreadas[id];
     if(!existente){
       if(datos.tipo === "texto") crearBoxTexto(id, datos);
+      else if(datos.tipo === "imagen") crearBoxImagen(id, datos);
       else crearBoxIframe(id, datos);
     } else if(existente.tipo === "texto"){
       actualizarBoxTexto(existente.box, datos);
+    } else if(existente.tipo === "imagen"){
+      actualizarBoxImagen(existente.box, datos);
     } else {
       actualizarBoxIframe(existente.box, datos);
     }
