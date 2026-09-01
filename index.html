@@ -390,6 +390,35 @@ iframe{
       </div>
     </div>
 
+    <hr class="pe-divider">
+
+    <div class="pe-grupo">
+      <span class="pe-label">Animación</span>
+      <select id="pe-anim-modo">
+        <option value="ninguna">Ninguna</option>
+        <option value="marquee">Texto corredizo (marquee)</option>
+        <option value="palabras">Palabras cambiantes (fade)</option>
+      </select>
+    </div>
+
+    <div class="pe-grupo" id="pe-anim-marquee-grupo" style="display:none;">
+      <span class="pe-label">Velocidad (px/seg)</span>
+      <div class="pe-range-row">
+        <input type="range" id="pe-anim-velocidad" min="20" max="400" step="10" value="120">
+        <span class="pe-range-val" id="pe-anim-velocidad-val">120</span>
+      </div>
+    </div>
+
+    <div class="pe-grupo" id="pe-anim-palabras-grupo" style="display:none;">
+      <span class="pe-label">Palabras (una por línea)</span>
+      <textarea id="pe-anim-palabras" rows="4" style="width:100%; box-sizing:border-box; font-size:12px; padding:6px 7px; border-radius:5px; border:1px solid #444; background:#2a2a2a; color:#eee; resize:vertical;" placeholder="Palabra 1&#10;Palabra 2&#10;Palabra 3"></textarea>
+      <span class="pe-label" style="margin-top:4px;">Intervalo (ms)</span>
+      <div class="pe-range-row">
+        <input type="range" id="pe-anim-intervalo" min="500" max="6000" step="100" value="2000">
+        <span class="pe-range-val" id="pe-anim-intervalo-val">2000</span>
+      </div>
+    </div>
+
   </div>
   <button id="panelEstilosAplicar">✅ Aplicar estilos</button>
 </div>
@@ -468,6 +497,7 @@ iframe{
 
 <script type="module">
 import { database, ref, set, get, remove, onValue } from "./firebase.js";
+import { aplicarAnimacion, actualizarValorAnimado } from "./animaciones.js";
 
 const canvas = document.getElementById("canvas");
 
@@ -602,8 +632,18 @@ const pe = {
   bgcolor: "#000000",
   alpha: 100,
   align: "center",
-  valign: "center"
+  valign: "center",
+  animModo: "ninguna",
+  animVelocidad: 120,
+  animPalabras: [],
+  animIntervalo: 2000
 };
+
+// Convierte un valor de dataset a número, con fallback seguro si es NaN/undefined
+function numeroSeguro(valor, porDefecto){
+  const n = parseInt(valor);
+  return Number.isFinite(n) ? n : porDefecto;
+}
 
 function hexToRgb(hex){
   const r = parseInt(hex.slice(1,3),16);
@@ -632,6 +672,10 @@ function cargarPanelDesdeDataset(box){
   pe.alpha   = parseInt(d.esAlpha) ?? 100;
   pe.align   = d.esAlign   || "center";
   pe.valign  = d.esValign  || "center";
+  pe.animModo      = d.animModo || "ninguna";
+  pe.animVelocidad = numeroSeguro(d.animVelocidad, 120);
+  pe.animPalabras  = d.animPalabras ? JSON.parse(d.animPalabras) : [];
+  pe.animIntervalo = numeroSeguro(d.animIntervalo, 2000);
 
   document.getElementById("pe-font").value   = pe.font;
   document.getElementById("pe-size").value   = pe.size;
@@ -652,6 +696,19 @@ function cargarPanelDesdeDataset(box){
     document.getElementById("pe-btn-valign-"+map[k]).classList.toggle("activo", pe.valign === k);
   });
   actualizarPreviewFondo();
+
+  document.getElementById("pe-anim-modo").value = pe.animModo;
+  document.getElementById("pe-anim-velocidad").value = pe.animVelocidad;
+  document.getElementById("pe-anim-velocidad-val").textContent = pe.animVelocidad;
+  document.getElementById("pe-anim-palabras").value = pe.animPalabras.join("\n");
+  document.getElementById("pe-anim-intervalo").value = pe.animIntervalo;
+  document.getElementById("pe-anim-intervalo-val").textContent = pe.animIntervalo;
+  actualizarVisibilidadGruposAnim();
+}
+
+function actualizarVisibilidadGruposAnim(){
+  document.getElementById("pe-anim-marquee-grupo").style.display  = pe.animModo === "marquee"  ? "flex" : "none";
+  document.getElementById("pe-anim-palabras-grupo").style.display = pe.animModo === "palabras" ? "flex" : "none";
 }
 
 function aplicarEstilosABox(box){
@@ -666,6 +723,10 @@ function aplicarEstilosABox(box){
   d.esAlpha   = pe.alpha;
   d.esAlign   = pe.align;
   d.esValign  = pe.valign;
+  d.animModo      = pe.animModo;
+  d.animVelocidad = pe.animVelocidad;
+  d.animPalabras  = JSON.stringify(pe.animPalabras);
+  d.animIntervalo = pe.animIntervalo;
 
   const {r,g,b} = hexToRgb(pe.bgcolor);
   const a = pe.alpha / 100;
@@ -682,6 +743,11 @@ function aplicarEstilosABox(box){
   contenido.style.textAlign   = pe.align;
   contenido.style.justifyContent = pe.align === "left" ? "flex-start" : pe.align === "right" ? "flex-end" : "center";
   contenido.style.alignItems  = pe.valign;
+
+  // Preview de la animación directamente en el editor
+  const esContador = box.dataset.contador === "true";
+  const valorActual = esContador ? (contenido.dataset.valorActual || "0") : contenido.textContent;
+  aplicarAnimacion(box, contenido, { modo: pe.animModo, velocidad: pe.animVelocidad, palabras: pe.animPalabras, intervalo: pe.animIntervalo }, valorActual);
 }
 
 // Controles del panel — actualización en tiempo real
@@ -707,6 +773,25 @@ document.getElementById("pe-alpha").addEventListener("input", e=>{
   pe.alpha = parseInt(e.target.value);
   document.getElementById("pe-alpha-val").textContent = pe.alpha + "%";
   actualizarPreviewFondo();
+  if(cajaEnEstilos) aplicarEstilosABox(cajaEnEstilos);
+});
+document.getElementById("pe-anim-modo").addEventListener("change", e=>{
+  pe.animModo = e.target.value;
+  actualizarVisibilidadGruposAnim();
+  if(cajaEnEstilos) aplicarEstilosABox(cajaEnEstilos);
+});
+document.getElementById("pe-anim-velocidad").addEventListener("input", e=>{
+  pe.animVelocidad = parseInt(e.target.value);
+  document.getElementById("pe-anim-velocidad-val").textContent = pe.animVelocidad;
+  if(cajaEnEstilos) aplicarEstilosABox(cajaEnEstilos);
+});
+document.getElementById("pe-anim-palabras").addEventListener("input", e=>{
+  pe.animPalabras = e.target.value.split("\n").map(p=>p.trim()).filter(Boolean);
+  if(cajaEnEstilos) aplicarEstilosABox(cajaEnEstilos);
+});
+document.getElementById("pe-anim-intervalo").addEventListener("input", e=>{
+  pe.animIntervalo = parseInt(e.target.value);
+  document.getElementById("pe-anim-intervalo-val").textContent = pe.animIntervalo;
   if(cajaEnEstilos) aplicarEstilosABox(cajaEnEstilos);
 });
 
@@ -827,10 +912,17 @@ function crearBoxTexto(id, datos){
     box.dataset.esShadow  = datos.estilos.shadow  || "false";
     box.dataset.esColor   = datos.estilos.color   || "#ffffff";
     box.dataset.esBgcolor = datos.estilos.bgcolor || "#000000";
-    box.dataset.esAlpha   = datos.estilos.alpha   ?? 100;
+    box.dataset.esAlpha   = Number.isFinite(parseInt(datos.estilos.alpha)) ? parseInt(datos.estilos.alpha) : 100;
     box.dataset.esAlign   = datos.estilos.align   || "center";
     box.dataset.esValign  = datos.estilos.valign  || "center";
   }
+
+  // Restaurar configuración de animación guardada (si existe)
+  const anim = datos.animacion || {};
+  box.dataset.animModo      = anim.modo || "ninguna";
+  box.dataset.animVelocidad = numeroSeguro(anim.velocidad, 120);
+  box.dataset.animPalabras  = JSON.stringify(Array.isArray(anim.palabras) ? anim.palabras : []);
+  box.dataset.animIntervalo = numeroSeguro(anim.intervalo, 2000);
 
   const contenido = document.createElement("div");
   contenido.className = "texto-contenido";
@@ -840,6 +932,9 @@ function crearBoxTexto(id, datos){
 
   // Aplicar estilos visuales si existen
   if(datos.estilos) aplicarEstilosABox(box);
+
+  // Aplicar animación guardada (preview en el editor)
+  aplicarAnimacion(box, contenido, anim, contenido.dataset.valorActual || contenido.textContent);
 
   box.addEventListener("click", e=>{ e.stopPropagation(); seleccionarBox(box); });
   box.addEventListener("dblclick", e=>{ e.stopPropagation(); editarBoxTexto(box); });
@@ -870,7 +965,7 @@ function sumarATexto(box, cantidad){
   get(ref(database, "textoLive/" + id)).then(snapshot=>{
     const actual = snapshot.exists() ? (parseInt(snapshot.val()) || 0) : 0;
     const nuevoValor = actual + cantidad;
-    contenido.textContent = String(nuevoValor);
+    actualizarValorAnimado(contenido, nuevoValor);
     set(ref(database, "textoLive/" + id), String(nuevoValor))
       .catch(err => alert("❌ No se pudo actualizar el contador: " + err.message));
   }).catch(err => alert("❌ Error leyendo Firebase: " + err.message));
@@ -878,7 +973,7 @@ function sumarATexto(box, cantidad){
 
 function resetearTexto(box){
   const contenido = box.querySelector(".texto-contenido");
-  contenido.textContent = "0";
+  actualizarValorAnimado(contenido, "0");
   set(ref(database, "textoLive/" + box.id), "0")
     .catch(err => alert("❌ No se pudo resetear: " + err.message));
 }
@@ -957,25 +1052,37 @@ document.getElementById("guardar").onclick = ()=>{
       // Recopilar estilos guardados en dataset
       const estilos = {
         font:    box.dataset.esFont    || "sans-serif",
-        size:    parseInt(box.dataset.esSize) || 48,
+        size:    numeroSeguro(box.dataset.esSize, 48),
         bold:    box.dataset.esBold    === "true",
         italic:  box.dataset.esItalic  === "true",
         shadow:  box.dataset.esShadow  === "true",
         color:   box.dataset.esColor   || "#ffffff",
         bgcolor: box.dataset.esBgcolor || "#000000",
-        alpha:   parseInt(box.dataset.esAlpha) ?? 100,
+        alpha:   numeroSeguro(box.dataset.esAlpha, 100),
         align:   box.dataset.esAlign   || "center",
         valign:  box.dataset.esValign  || "center"
+      };
+      // Valor guardado del contenido animado (sin depender de lo que muestre el DOM en ese instante,
+      // ya que en modo marquee/palabras el texto visible cambia constantemente)
+      const valorContenido = esContador ? "0" : (contenido.dataset.valorActual || contenido.textContent);
+      let palabrasGuardadas = [];
+      try { palabrasGuardadas = JSON.parse(box.dataset.animPalabras || "[]"); } catch(e) { palabrasGuardadas = []; }
+      const animacion = {
+        modo:      box.dataset.animModo || "ninguna",
+        velocidad: numeroSeguro(box.dataset.animVelocidad, 120),
+        palabras:  palabrasGuardadas,
+        intervalo: numeroSeguro(box.dataset.animIntervalo, 2000)
       };
       diseño[box.id] = {
         tipo: "texto",
         left: box.style.left, top: box.style.top,
         width: box.style.width, height: box.style.height,
-        contenido: esContador ? "0" : contenido.textContent,
+        contenido: valorContenido,
         contador: esContador,
         nombreRegalo: box.dataset.nombreRegalo || "",
         regaloId: box.dataset.regaloId || "",
-        estilos  // ← nuevo campo con todos los estilos
+        estilos,  // ← estilos de texto (fuente, color, etc.)
+        animacion // ← nuevo campo: modo de animación (marquee / palabras / ninguna)
       };
     } else {
       const iframe = box.querySelector("iframe");
@@ -1039,7 +1146,7 @@ document.getElementById("modalEditarGuardar").onclick = ()=>{
 
   if(!esContador){
     const nuevoTexto = modalEditarTexto.value;
-    contenido.textContent = nuevoTexto;
+    actualizarValorAnimado(contenido, nuevoTexto);
     set(ref(database, "textoLive/" + box.id), nuevoTexto)
       .catch(err => alert("❌ No se pudo actualizar el texto en vivo: " + err.message));
   }
