@@ -104,9 +104,47 @@ iframe{
 #guardar{ background:#2196F3; color:white; }
 #agregar{ background:#4CAF50; color:white; }
 #agregarTexto{ background:#000; color:white; border:2px solid white; }
+#agregarImagen{ background:#009688; color:white; }
 #test{ background:#FF9800; color:white; }
 #reset{ background:#795548; color:white; }
 #eliminar{ background:#f44336; color:white; }
+
+.imagen-contenido{
+  width:100%; height:100%;
+  display:block;
+}
+.box.oculta-en-editor{
+  opacity:0.35;
+}
+.badge-oculta{
+  position:absolute;
+  top:4px; left:4px;
+  background:#f44336;
+  color:white;
+  font-size:10px;
+  font-weight:bold;
+  padding:2px 6px;
+  border-radius:4px;
+  z-index:30;
+  pointer-events:none;
+  display:none;
+}
+.btn-ojo{
+  position:absolute;
+  top:4px; right:4px;
+  width:26px; height:26px;
+  border-radius:50%;
+  background:rgba(0,0,0,0.65);
+  color:white;
+  border:none;
+  cursor:pointer;
+  font-size:14px;
+  z-index:30;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+}
 
 /* Panel de estilos de texto (derecha) */
 #panelEstilos{
@@ -304,6 +342,7 @@ iframe{
   <button id="guardar">GUARDAR DISEÑO</button>
   <button id="agregar">➕ AGREGAR ELEMENTO</button>
   <button id="agregarTexto">🔤 AGREGAR TEXTO</button>
+  <button id="agregarImagen">🖼 AGREGAR IMAGEN</button>
   <button id="test">🧪 TEST</button>
   <button id="reset">♻ RESET</button>
   <button id="eliminar">🗑 ELIMINAR SELECCIONADO</button>
@@ -488,6 +527,28 @@ iframe{
     <div class="modal-botones">
       <button id="modalEditarCancelar" class="modal-btn-cancelar">Cancelar</button>
       <button id="modalEditarGuardar" class="modal-btn-confirmar">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AGREGAR / EDITAR IMAGEN -->
+<div id="modalImagenFondo" class="modal-fondo">
+  <div id="modalImagenCaja" class="modal-caja">
+    <h3 id="modalImagenTitulo">Agregar imagen</h3>
+    <label for="modalImagenArchivo">Elegir archivo de imagen:</label>
+    <input type="file" id="modalImagenArchivo" accept="image/*">
+    <div id="modalImagenPreviewWrap" style="display:none; text-align:center;">
+      <img id="modalImagenPreview" style="max-width:100%; max-height:180px; border:1px solid #ccc; border-radius:6px;">
+    </div>
+    <label for="modalImagenAjuste">Ajuste de la imagen en la caja:</label>
+    <select id="modalImagenAjuste">
+      <option value="contain">Contener (se ve completa, puede dejar espacios)</option>
+      <option value="cover">Cubrir (llena la caja, puede recortar)</option>
+      <option value="fill">Estirar (llena exacto, puede deformar)</option>
+    </select>
+    <div class="modal-botones">
+      <button id="modalImagenCancelar" class="modal-btn-cancelar">Cancelar</button>
+      <button id="modalImagenGuardar" class="modal-btn-confirmar">Guardar</button>
     </div>
   </div>
 </div>
@@ -891,6 +952,71 @@ function editarBoxIframe(box){
   actualizarEscalaContenido(box);
 }
 
+// ── CAJA IMAGEN ──
+// Visibilidad en vivo: ruta aparte "visibilidadImagen/<id>", igual patrón que "textoLive/"
+// para contadores. El botón del ojito escribe ahí directo (sin necesitar GUARDAR DISEÑO)
+// y el overlay.html ya está escuchando ese cambio al instante.
+const visibilidadImagenLocal = {}; // cache local id -> boolean visible
+
+function actualizarAparienciaOculta(box, visible){
+  box.classList.toggle("oculta-en-editor", !visible);
+  const badge = box.querySelector(".badge-oculta");
+  if(badge) badge.style.display = visible ? "none" : "block";
+}
+
+function crearBoxImagen(id, datos){
+  const box = document.createElement("div");
+  box.className = "box"; box.id = id;
+  box.dataset.tipo = "imagen";
+  box.style.left = datos.left; box.style.top = datos.top;
+  box.style.width = datos.width; box.style.height = datos.height;
+  box.dataset.ajuste = datos.ajuste || "contain";
+  box.dataset.src = datos.src || "";
+
+  const img = document.createElement("img");
+  img.className = "imagen-contenido";
+  img.src = datos.src || "";
+  img.style.objectFit = box.dataset.ajuste;
+  box.appendChild(img);
+
+  const badge = document.createElement("div");
+  badge.className = "badge-oculta";
+  badge.textContent = "OCULTA EN VIVO";
+  box.appendChild(badge);
+
+  const btnOjo = document.createElement("button");
+  btnOjo.type = "button";
+  btnOjo.className = "btn-ojo";
+  btnOjo.title = "Mostrar/ocultar en vivo";
+  btnOjo.textContent = "👁";
+  // Evitar que el click/drag del ojito interfiera con Moveable o con la selección de caja
+  btnOjo.addEventListener("mousedown", e=> e.stopPropagation());
+  btnOjo.addEventListener("click", e=>{
+    e.stopPropagation();
+    const visibleActual = visibilidadImagenLocal[id] !== false;
+    const nuevoValor = !visibleActual;
+    visibilidadImagenLocal[id] = nuevoValor;
+    actualizarAparienciaOculta(box, nuevoValor);
+    set(ref(database, "visibilidadImagen/" + id), nuevoValor)
+      .catch(err => alert("❌ No se pudo cambiar la visibilidad en vivo: " + err.message));
+  });
+  box.appendChild(btnOjo);
+
+  canvas.appendChild(box);
+
+  // Cargar estado real de visibilidad guardado en Firebase (por defecto: visible)
+  get(ref(database, "visibilidadImagen/" + id)).then(snap=>{
+    const visible = snap.exists() ? snap.val() !== false : true;
+    visibilidadImagenLocal[id] = visible;
+    actualizarAparienciaOculta(box, visible);
+  }).catch(()=>{ visibilidadImagenLocal[id] = true; });
+
+  box.addEventListener("click", e=>{ e.stopPropagation(); seleccionarBox(box); });
+  box.addEventListener("dblclick", e=>{ e.stopPropagation(); editarBoxImagen(box); });
+  activarMoveable(box);
+  return box;
+}
+
 // ── CAJA TEXTO / CONTADOR ──
 function crearBoxTexto(id, datos){
   const box = document.createElement("div");
@@ -958,6 +1084,102 @@ function editarBoxTexto(box){
   actualizarVisibilidadNombreRegalo();
   modalEditarFondo.style.display = "flex";
 }
+
+// ═══════════════════════════════════════════════════════
+//  MODAL AGREGAR / EDITAR IMAGEN
+// ═══════════════════════════════════════════════════════
+const modalImagenFondo = document.getElementById("modalImagenFondo");
+const modalImagenArchivo = document.getElementById("modalImagenArchivo");
+const modalImagenPreviewWrap = document.getElementById("modalImagenPreviewWrap");
+const modalImagenPreview = document.getElementById("modalImagenPreview");
+const modalImagenAjuste = document.getElementById("modalImagenAjuste");
+const modalImagenTitulo = document.getElementById("modalImagenTitulo");
+
+let imagenBase64Pendiente = null; // imagen nueva elegida en el modal (null = no se tocó)
+let boxImagenEnEdicion = null;    // null = se está agregando una caja nueva
+
+modalImagenArchivo.addEventListener("change", ()=>{
+  const archivo = modalImagenArchivo.files[0];
+  if(!archivo) return;
+  if(!archivo.type.startsWith("image/")){
+    alert("⚠ Elegí un archivo de imagen válido.");
+    modalImagenArchivo.value = "";
+    return;
+  }
+  const lector = new FileReader();
+  lector.onload = ()=>{
+    imagenBase64Pendiente = lector.result;
+    modalImagenPreview.src = imagenBase64Pendiente;
+    modalImagenPreviewWrap.style.display = "block";
+  };
+  lector.readAsDataURL(archivo);
+});
+
+function abrirModalImagen(box){
+  boxImagenEnEdicion = box || null;
+  imagenBase64Pendiente = null;
+  modalImagenArchivo.value = "";
+  modalImagenTitulo.textContent = box ? "Editar imagen" : "Agregar imagen";
+  if(box){
+    modalImagenAjuste.value = box.dataset.ajuste || "contain";
+    const srcActual = box.dataset.src || "";
+    if(srcActual){
+      modalImagenPreview.src = srcActual;
+      modalImagenPreviewWrap.style.display = "block";
+    } else {
+      modalImagenPreviewWrap.style.display = "none";
+    }
+  } else {
+    modalImagenAjuste.value = "contain";
+    modalImagenPreviewWrap.style.display = "none";
+  }
+  modalImagenFondo.style.display = "flex";
+}
+
+function editarBoxImagen(box){
+  abrirModalImagen(box);
+}
+
+document.getElementById("agregarImagen").onclick = ()=>{
+  abrirModalImagen(null);
+};
+
+document.getElementById("modalImagenCancelar").onclick = ()=>{
+  modalImagenFondo.style.display = "none";
+  boxImagenEnEdicion = null;
+  imagenBase64Pendiente = null;
+};
+
+document.getElementById("modalImagenGuardar").onclick = ()=>{
+  const ajuste = modalImagenAjuste.value;
+
+  if(boxImagenEnEdicion){
+    // Editando una caja de imagen ya existente
+    const box = boxImagenEnEdicion;
+    box.dataset.ajuste = ajuste;
+    const img = box.querySelector(".imagen-contenido");
+    if(imagenBase64Pendiente){
+      box.dataset.src = imagenBase64Pendiente;
+      if(img) img.src = imagenBase64Pendiente;
+    }
+    if(img) img.style.objectFit = ajuste;
+  } else {
+    // Agregando una caja de imagen nueva
+    if(!imagenBase64Pendiente){
+      alert("⚠ Elegí un archivo de imagen primero.");
+      return;
+    }
+    const id = "imagen_" + Date.now();
+    crearBoxImagen(id, {
+      left: "300px", top: "800px", width: "400px", height: "400px",
+      src: imagenBase64Pendiente, ajuste
+    });
+  }
+
+  modalImagenFondo.style.display = "none";
+  boxImagenEnEdicion = null;
+  imagenBase64Pendiente = null;
+};
 
 function sumarATexto(box, cantidad){
   const contenido = box.querySelector(".texto-contenido");
@@ -1035,8 +1257,14 @@ document.getElementById("agregarTexto").onclick = ()=>{
 document.getElementById("eliminar").onclick = ()=>{
   if(!seleccionada){ alert("Selecciona primero una caja haciendo click sobre ella."); return; }
   const id = seleccionada.id;
+  const tipo = seleccionada.dataset.tipo;
   if(moveables[id]){ moveables[id].destroy(); delete moveables[id]; }
   seleccionada.remove();
+  if(tipo === "imagen"){
+    delete visibilidadImagenLocal[id];
+    remove(ref(database, "visibilidadImagen/" + id))
+      .catch(err => console.warn("No se pudo limpiar visibilidadImagen:", err));
+  }
   seleccionada = null;
   panelEstilos.style.display = "none";
   cajaEnEstilos = null;
@@ -1083,6 +1311,14 @@ document.getElementById("guardar").onclick = ()=>{
         regaloId: box.dataset.regaloId || "",
         estilos,  // ← estilos de texto (fuente, color, etc.)
         animacion // ← nuevo campo: modo de animación (marquee / palabras / ninguna)
+      };
+    } else if(box.dataset.tipo === "imagen"){
+      diseño[box.id] = {
+        tipo: "imagen",
+        left: box.style.left, top: box.style.top,
+        width: box.style.width, height: box.style.height,
+        src: box.dataset.src || "",
+        ajuste: box.dataset.ajuste || "contain"
       };
     } else {
       const iframe = box.querySelector("iframe");
@@ -1221,6 +1457,7 @@ async function iniciar(){
     const item = datos[id];
     if(item.tipo === "texto") crearBoxTexto(id, item);
     else if(item.tipo === "iframe") crearBoxIframe(id, item);
+    else if(item.tipo === "imagen") crearBoxImagen(id, item);
   });
 }
 iniciar();
