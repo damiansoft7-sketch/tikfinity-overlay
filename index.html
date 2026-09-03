@@ -101,8 +101,6 @@ iframe{
 #agregar{ background:#4CAF50; color:white; }
 #agregarTexto{ background:#000; color:white; border:2px solid white; }
 #agregarImagen{ background:#009688; color:white; }
-#test{ background:#FF9800; color:white; }
-#reset{ background:#795548; color:white; }
 #eliminar{ background:#f44336; color:white; }
 
 .imagen-contenido{
@@ -1076,6 +1074,7 @@ document.getElementById("agregarTexto").onclick = ()=>{
 // BOTÓN ELIMINAR
 document.getElementById("eliminar").onclick = ()=>{
   if(!seleccionada){ alert("Selecciona primero una caja haciendo click sobre ella."); return; }
+  if(!confirm("¿Eliminar esta caja? Esta acción no se puede deshacer.")) return;
   const id = seleccionada.id;
   const tipo = seleccionada.dataset.tipo;
   if(moveables[id]){ moveables[id].destroy(); delete moveables[id]; }
