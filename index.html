@@ -625,6 +625,41 @@ function aplicarEstilosABox(box){
   aplicarAnimacion(box, contenido, { modo: pe.animModo, velocidad: pe.animVelocidad, palabras: pe.animPalabras, intervalo: pe.animIntervalo }, contenido.textContent);
 }
 
+// Igual que aplicarEstilosABox, pero lee el estilo guardado de LA PROPIA caja
+// (box.dataset), sin tocar ni depender del panel global "pe". Se usa al crear/
+// restaurar una caja desde Firebase, para no pisarla con lo que haya quedado
+// en el panel de estilos de otra caja distinta.
+function aplicarEstilosDesdeDataset(box){
+  const d = box.dataset;
+  const contenido = box.querySelector(".texto-contenido");
+  if(!contenido) return;
+
+  const font    = d.esFont    || "sans-serif";
+  const size    = numeroSeguro(d.esSize, 48);
+  const bold    = d.esBold    === "true";
+  const italic  = d.esItalic  === "true";
+  const shadow  = d.esShadow  === "true";
+  const color   = d.esColor   || "#ffffff";
+  const bgcolor = d.esBgcolor || "#000000";
+  const alpha   = numeroSeguro(d.esAlpha, 100);
+  const align   = d.esAlign   || "center";
+  const valign  = d.esValign  || "center";
+
+  const {r,g,b} = hexToRgb(bgcolor);
+  const a = alpha / 100;
+
+  contenido.style.fontFamily  = font;
+  contenido.style.fontSize    = size + "px";
+  contenido.style.fontWeight  = bold   ? "700" : "400";
+  contenido.style.fontStyle   = italic ? "italic" : "normal";
+  contenido.style.textShadow  = shadow ? "2px 2px 8px rgba(0,0,0,0.9)" : "none";
+  contenido.style.color       = color;
+  contenido.style.background  = alpha === 0 ? "transparent" : `rgba(${r},${g},${b},${a})`;
+  contenido.style.textAlign   = align;
+  contenido.style.justifyContent = align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center";
+  contenido.style.alignItems  = valign;
+}
+
 // Controles del panel — actualización en tiempo real
 document.getElementById("pe-font").addEventListener("change", e=>{
   pe.font = e.target.value;
@@ -866,8 +901,8 @@ function crearBoxTexto(id, datos){
   box.appendChild(contenido);
   canvas.appendChild(box);
 
-  // Aplicar estilos visuales si existen
-  if(datos.estilos) aplicarEstilosABox(box);
+  // Aplicar estilos visuales guardados de ESTA caja (no del panel global)
+  if(datos.estilos) aplicarEstilosDesdeDataset(box);
 
   // Aplicar animación guardada (preview en el editor)
   aplicarAnimacion(box, contenido, anim, contenido.dataset.valorActual || contenido.textContent);
