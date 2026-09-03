@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;700&family=Press+Start+2P&family=Rajdhani:wght@400;700&family=Exo+2:wght@400;700&family=Roboto:wght@400;700&family=Anton&family=Bangers&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+<style>
+html,body{
+  margin:0; padding:0;
+  width:100%; height:100%;
+  background:transparent;
+  overflow:hidden;
+}
+#vista{
+  width:100vw; height:100vh;
+  overflow:hidden;
+  position:absolute;
+  left:0; top:0;
+}
+#canvas{
+  position:absolute;
+  left:0; top:0;
+  width:1080px; height:1920px;
+  transform-origin:top left;
+}
+.box{
+  position:absolute;
+  overflow:hidden;
+}
+.imagen-contenido{
+  width:100%; height:100%;
+  display:block;
+}
+iframe{
+  position:absolute;
+  left:0; top:0;
+  border:none;
+  background:transparent;
+  pointer-events:none;
+  transform-origin:top left;
+}
+.texto-contenido{
+  width:100%; height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  box-sizing:border-box;
+  padding:10px;
+  font-size:48px;
+  font-weight:bold;
+  word-break:break-word;
+  line-height:1.2;
+  /* Estilos base — se sobreescriben desde Firebase (campo estilos) */
+  background:#000;
+  color:#fff;
+}
+</style>
+</head>
+<body>
+
+<div id="vista">
+  <div id="canvas">
+    <!-- Las cajas se generan dinámicamente desde Firebase -->
+  </div>
+</div>
+
+<script type="module">
+import { database, ref, onValue } from "./firebase.js";
+import { aplicarAnimacion, actualizarValorAnimado, detenerAnimacion } from "./animaciones.js";
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS DE ESTILOS
+// ═══════════════════════════════════════════════════════
+function hexToRgb(hex){
+  const h = hex.replace("#","");
+  const r = parseInt(h.slice(0,2),16);
+  const g = parseInt(h.slice(2,4),16);
+  const b = parseInt(h.slice(4,6),16);
+  return {r,g,b};
+}
+
+function aplicarEstilosAContenido(contenido, estilos){
+  if(!estilos) return;
+  const font    = estilos.font    || "sans-serif";
+  const size    = parseInt(estilos.size)  || 48;
+  const bold    = estilos.bold    === true || estilos.bold === "true";
+  const italic  = estilos.italic  === true || estilos.italic === "true";
+  const shadow  = estilos.shadow  === true || estilos.shadow === "true";
+  const color   = estilos.color   || "#ffffff";
+  const bgcolor = estilos.bgcolor || "#000000";
+  const alpha   = estilos.alpha   !== undefined ? parseInt(estilos.alpha) : 100;
+  const align   = estilos.align   || "center";
+  const valign  = estilos.valign  || "center";
+
+  const {r,g,b} = hexToRgb(bgcolor);
+  const a = alpha / 100;
+
+  contenido.style.fontFamily     = font;
+  contenido.style.fontSize       = size + "px";
+  contenido.style.fontWeight     = bold   ? "700" : "400";
+  contenido.style.fontStyle      = italic ? "italic" : "normal";
+  contenido.style.textShadow     = shadow ? "2px 2px 8px rgba(0,0,0,0.9)" : "none";
+  contenido.style.color          = color;
+  contenido.style.background     = alpha === 0 ? "transparent" : `rgba(${r},${g},${b},${a})`;
+  contenido.style.textAlign      = align;
+  contenido.style.justifyContent = align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center";
+  contenido.style.alignItems     = valign;
+}
+
+// ═══════════════════════════════════════════════════════
+//  CANVAS / FIREBASE
+// ═══════════════════════════════════════════════════════
+const canvas = document.getElementById("canvas");
+
+let resizePendiente = false;
+function ajustarCanvas(){
+  const escala = Math.min(window.innerWidth / 1080, window.innerHeight / 1920);
+  canvas.style.transform = `scale(${escala})`;
+}
+window.addEventListener("resize", ()=>{
+  if(resizePendiente) return;
+  resizePendiente = true;
+  requestAnimationFrame(()=>{ ajustarCanvas(); resizePendiente = false; });
+});
+ajustarCanvas();
+
+const cajasCreadas = {};
+const contadores = {};
+
+// ── iframe ──
+function crearBoxIframe(id, datos){
+  const box = document.createElement("div");
+  box.className = "box"; box.id = id;
+  const iframe = document.createElement("iframe");
+  iframe.src = "";
+  box.appendChild(iframe);
+  canvas.appendChild(box);
+  actualizarBoxIframe(box, datos);
+  cajasCreadas[id] = { box, tipo:"iframe" };
+}
+
+function actualizarBoxIframe(box, datos){
+  box.style.left = datos.left; box.style.top = datos.top;
+  box.style.width = datos.width; box.style.height = datos.height;
+  const baseWidth  = parseFloat(datos.baseWidth)  || 400;
+  const baseHeight = parseFloat(datos.baseHeight) || 150;
+  const iframe = box.querySelector("iframe");
+  if(datos.link && iframe.src !== datos.link) iframe.src = datos.link;
+  iframe.style.width  = baseWidth  + "px";
+  iframe.style.height = baseHeight + "px";
+  iframe.style.transform = `scale(${parseFloat(datos.width)/baseWidth}, ${parseFloat(datos.height)/baseHeight})`;
+}
+
+// ── imagen ──
+function crearBoxImagen(id, datos){
+  const box = document.createElement("div");
+  box.className = "box"; box.id = id;
+  const img = document.createElement("img");
+  img.className = "imagen-contenido";
+  box.appendChild(img);
+  canvas.appendChild(box);
+  actualizarBoxImagen(box, datos);
+
+  // Visibilidad en vivo: ruta aparte "visibilidadImagen/<id>" (mismo patrón que
+  // "textoLive/" para contadores), se aplica al instante sin recargar el diseño.
+  const unsubVisibilidad = onValue(ref(database, "visibilidadImagen/" + id), (snapshot)=>{
+    const visible = snapshot.exists() ? snapshot.val() !== false : true;
+    box.style.display = visible ? "" : "none";
+  });
+
+  cajasCreadas[id] = { box, tipo:"imagen", unsub: unsubVisibilidad };
+}
+
+function actualizarBoxImagen(box, datos){
+  box.style.left = datos.left; box.style.top = datos.top;
+  box.style.width = datos.width; box.style.height = datos.height;
+  const img = box.querySelector(".imagen-contenido");
+  if(img){
+    if(datos.src && img.src !== datos.src) img.src = datos.src;
+    img.style.objectFit = datos.ajuste || "contain";
+  }
+}
+
+// ── texto ──
+function crearBoxTexto(id, datos){
+  const box = document.createElement("div");
+  box.className = "box"; box.id = id;
+  box.style.left = datos.left; box.style.top = datos.top;
+  box.style.width = datos.width; box.style.height = datos.height;
+
+  const contenido = document.createElement("div");
+  contenido.className = "texto-contenido";
+  box.appendChild(contenido);
+
+  // Aplicar estilos guardados (si existen)
+  if(datos.estilos) aplicarEstilosAContenido(contenido, datos.estilos);
+
+  canvas.appendChild(box);
+
+  // Aplicar modo de animación (marquee / palabras cambiantes / ninguna)
+  aplicarAnimacion(box, contenido, datos.animacion, datos.contenido || "");
+
+  const unsub = onValue(ref(database, "textoLive/" + id), (snapshot)=>{
+    if(snapshot.exists()){
+      const val = snapshot.val();
+      actualizarValorAnimado(contenido, val);
+      contadores[id] = parseInt(val) || 0;
+    }
+  });
+
+  cajasCreadas[id] = { box, tipo:"texto", unsub };
+}
+
+function actualizarBoxTexto(box, datos){
+  box.style.left = datos.left; box.style.top = datos.top;
+  box.style.width = datos.width; box.style.height = datos.height;
+  // Re-aplicar estilos si cambiaron en el editor
+  const contenido = box.querySelector(".texto-contenido");
+  if(contenido && datos.estilos) aplicarEstilosAContenido(contenido, datos.estilos);
+  // Re-aplicar animación (por si el modo/velocidad/palabras cambiaron en el editor)
+  if(contenido) aplicarAnimacion(box, contenido, datos.animacion, contenido.dataset.valorActual);
+}
+
+onValue(ref(database, "diseño"), (snapshot)=>{
+  const diseño = snapshot.exists() ? snapshot.val() : {};
+  const idsNuevos = Object.keys(diseño);
+
+  // Eliminar cajas que ya no existen en Firebase
+  Object.keys(cajasCreadas).forEach(id=>{
+    if(!idsNuevos.includes(id)){
+      if(typeof cajasCreadas[id].unsub === "function") cajasCreadas[id].unsub();
+      detenerAnimacion(id);
+      cajasCreadas[id].box.remove();
+      delete cajasCreadas[id];
+    }
+  });
+
+  idsNuevos.forEach(id=>{
+    const datos = diseño[id];
+    if(datos.tipo !== "texto" && datos.tipo !== "iframe" && datos.tipo !== "imagen") return;
+
+    const existente = cajasCreadas[id];
+    if(!existente){
+      if(datos.tipo === "texto") crearBoxTexto(id, datos);
+      else if(datos.tipo === "imagen") crearBoxImagen(id, datos);
+      else crearBoxIframe(id, datos);
+    } else if(existente.tipo === "texto"){
+      actualizarBoxTexto(existente.box, datos);
+    } else if(existente.tipo === "imagen"){
+      actualizarBoxImagen(existente.box, datos);
+    } else {
+      actualizarBoxIframe(existente.box, datos);
+    }
+  });
+});
+
+</script>
+</body>
+</html>
