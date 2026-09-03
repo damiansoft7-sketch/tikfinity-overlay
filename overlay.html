@@ -104,6 +104,7 @@ function crearBoxIframe(id, datos){
 function actualizarBoxIframe(box, datos){
   box.style.left = datos.left; box.style.top = datos.top;
   box.style.width = datos.width; box.style.height = datos.height;
+  box.style.zIndex = datos.orden || 0;
   const baseWidth  = parseFloat(datos.baseWidth)  || 400;
   const baseHeight = parseFloat(datos.baseHeight) || 150;
   const iframe = box.querySelector("iframe");
@@ -136,6 +137,7 @@ function crearBoxImagen(id, datos){
 function actualizarBoxImagen(box, datos){
   box.style.left = datos.left; box.style.top = datos.top;
   box.style.width = datos.width; box.style.height = datos.height;
+  box.style.zIndex = datos.orden || 0;
   const img = box.querySelector(".imagen-contenido");
   if(img){
     if(datos.src && img.src !== datos.src) img.src = datos.src;
@@ -149,6 +151,7 @@ function crearBoxTexto(id, datos){
   box.className = "box"; box.id = id;
   box.style.left = datos.left; box.style.top = datos.top;
   box.style.width = datos.width; box.style.height = datos.height;
+  box.style.zIndex = datos.orden || 0;
 
   const contenido = document.createElement("div");
   contenido.className = "texto-contenido";
@@ -176,6 +179,7 @@ function crearBoxTexto(id, datos){
 function actualizarBoxTexto(box, datos){
   box.style.left = datos.left; box.style.top = datos.top;
   box.style.width = datos.width; box.style.height = datos.height;
+  box.style.zIndex = datos.orden || 0;
   // Re-aplicar estilos si cambiaron en el editor
   const contenido = box.querySelector(".texto-contenido");
   if(contenido && datos.estilos) aplicarEstilosAElemento(contenido, datos.estilos);
