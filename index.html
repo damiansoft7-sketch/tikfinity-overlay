@@ -40,7 +40,7 @@ html,body{
   border:8px solid white;
   box-sizing:border-box;
   pointer-events:none;
-  z-index:20;
+  z-index:9000;
 }
 #zona{
   position:absolute;
@@ -48,12 +48,12 @@ html,body{
   width:980px; height:1520px;
   border:5px dashed rgba(255,255,255,.5);
   pointer-events:none;
-  z-index:15;
+  z-index:8000;
 }
 .box{
   position:absolute;
   overflow:hidden;
-  z-index:10;
+  /* z-index real de cada caja se asigna en JS según su "orden" de capa (ver dataset.orden) */
 }
 .box.seleccionado{
   outline:4px solid #00e5ff;
@@ -101,6 +101,8 @@ iframe{
 #agregar{ background:#4CAF50; color:white; }
 #agregarTexto{ background:#000; color:white; border:2px solid white; }
 #agregarImagen{ background:#009688; color:white; }
+#traerFrente{ background:#607D8B; color:white; }
+#enviarAtras{ background:#607D8B; color:white; }
 #eliminar{ background:#f44336; color:white; }
 
 .imagen-contenido{
@@ -318,6 +320,8 @@ iframe{
   <button id="agregar">➕ AGREGAR ELEMENTO</button>
   <button id="agregarTexto">🔤 AGREGAR TEXTO</button>
   <button id="agregarImagen">🖼 AGREGAR IMAGEN</button>
+  <button id="traerFrente">⬆ Traer al frente</button>
+  <button id="enviarAtras">⬇ Enviar atrás</button>
   <button id="eliminar">🗑 ELIMINAR SELECCIONADO</button>
 </div>
 
@@ -744,6 +748,44 @@ function actualizarEscalaContenido(box){
   iframe.style.transform = `scale(${width/baseWidth}, ${height/baseHeight})`;
 }
 
+// ═══════════════════════════════════════════════════════
+//  CAPAS (orden de superposición)
+//  Cada caja guarda su posición de capa en box.dataset.orden (un número).
+//  La caja con el número más alto se dibuja encima de las demás.
+//  Esto se guarda en Firebase junto con el resto de los datos de la caja,
+//  así el overlay respeta el mismo orden que ves en el editor.
+// ═══════════════════════════════════════════════════════
+
+// Aplica el número de orden guardado como z-index real, para que se vea en pantalla
+function aplicarOrden(box){
+  box.style.zIndex = numeroSeguro(box.dataset.orden, 0);
+}
+
+// El número de orden más alto que existe actualmente entre todas las cajas
+function ordenMaximo(){
+  let max = 0;
+  document.querySelectorAll(".box").forEach(b=>{
+    const o = numeroSeguro(b.dataset.orden, 0);
+    if(o > max) max = o;
+  });
+  return max;
+}
+
+// El número de orden más bajo que existe actualmente entre todas las cajas
+function ordenMinimo(){
+  let min = 0;
+  document.querySelectorAll(".box").forEach(b=>{
+    const o = numeroSeguro(b.dataset.orden, 0);
+    if(o < min) min = o;
+  });
+  return min;
+}
+
+// Toda caja nueva nace por encima de todo lo demás (como al agregar una capa nueva en Photoshop)
+function ordenParaCajaNueva(){
+  return ordenMaximo() + 1;
+}
+
 // ── CAJA IFRAME ──
 function crearBoxIframe(id, datos){
   const box = document.createElement("div");
@@ -753,6 +795,8 @@ function crearBoxIframe(id, datos){
   box.style.width = datos.width; box.style.height = datos.height;
   box.dataset.baseWidth = datos.baseWidth || BASE_WIDTH_DEFAULT;
   box.dataset.baseHeight = datos.baseHeight || BASE_HEIGHT_DEFAULT;
+  box.dataset.orden = numeroSeguro(datos.orden, 0);
+  aplicarOrden(box);
   const iframe = document.createElement("iframe");
   iframe.src = datos.link || "";
   box.appendChild(iframe);
@@ -794,6 +838,8 @@ function crearBoxImagen(id, datos){
   box.style.width = datos.width; box.style.height = datos.height;
   box.dataset.ajuste = datos.ajuste || "contain";
   box.dataset.src = datos.src || "";
+  box.dataset.orden = numeroSeguro(datos.orden, 0);
+  aplicarOrden(box);
 
   const img = document.createElement("img");
   img.className = "imagen-contenido";
@@ -846,6 +892,8 @@ function crearBoxTexto(id, datos){
   box.dataset.tipo = "texto";
   box.style.left = datos.left; box.style.top = datos.top;
   box.style.width = datos.width; box.style.height = datos.height;
+  box.dataset.orden = numeroSeguro(datos.orden, 0);
+  aplicarOrden(box);
 
   // Restaurar estilos guardados
   if(datos.estilos){
@@ -982,7 +1030,7 @@ document.getElementById("modalImagenGuardar").onclick = ()=>{
     const id = "imagen_" + Date.now();
     crearBoxImagen(id, {
       left: "300px", top: "800px", width: "400px", height: "400px",
-      src: imagenBase64Pendiente, ajuste
+      src: imagenBase64Pendiente, ajuste, orden: ordenParaCajaNueva()
     });
   }
 
@@ -1032,7 +1080,7 @@ document.getElementById("vista").addEventListener("click", ()=>{
 document.getElementById("agregar").onclick = ()=>{
   const link = prompt("Pega el enlace (URL) del widget de Tikfinity:");
   if(!link) return;
-  crearBoxIframe("box_"+Date.now(), { left:"100px", top:"100px", width:"400px", height:"150px", baseWidth:400, baseHeight:150, link });
+  crearBoxIframe("box_"+Date.now(), { left:"100px", top:"100px", width:"400px", height:"150px", baseWidth:400, baseHeight:150, link, orden: ordenParaCajaNueva() });
 };
 
 // BOTÓN AGREGAR TEXTO
@@ -1040,8 +1088,20 @@ document.getElementById("agregarTexto").onclick = ()=>{
   const texto = prompt("Texto inicial de la caja:", "Escribe tu texto");
   if(texto === null) return;
   const id = "texto_"+Date.now();
-  crearBoxTexto(id, { left:"150px", top:"800px", width:"780px", height:"200px", contenido: texto });
+  crearBoxTexto(id, { left:"150px", top:"800px", width:"780px", height:"200px", contenido: texto, orden: ordenParaCajaNueva() });
   set(ref(database, "textoLive/"+id), texto).catch(err => console.error(err));
+};
+
+// BOTONES DE CAPA — Traer al frente / Enviar atrás
+document.getElementById("traerFrente").onclick = ()=>{
+  if(!seleccionada){ alert("Selecciona primero una caja haciendo click sobre ella."); return; }
+  seleccionada.dataset.orden = ordenMaximo() + 1;
+  aplicarOrden(seleccionada);
+};
+document.getElementById("enviarAtras").onclick = ()=>{
+  if(!seleccionada){ alert("Selecciona primero una caja haciendo click sobre ella."); return; }
+  seleccionada.dataset.orden = ordenMinimo() - 1;
+  aplicarOrden(seleccionada);
 };
 
 // BOTÓN ELIMINAR
@@ -1102,7 +1162,8 @@ document.getElementById("guardar").onclick = ()=>{
         width: box.style.width, height: box.style.height,
         contenido: valorContenido,
         estilos,  // ← estilos de texto (fuente, color, etc.)
-        animacion // ← nuevo campo: modo de animación (marquee / palabras / ninguna)
+        animacion, // ← modo de animación (marquee / palabras / ninguna)
+        orden: numeroSeguro(box.dataset.orden, 0) // ← posición de capa (mayor = más al frente)
       };
     } else if(box.dataset.tipo === "imagen"){
       diseño[box.id] = {
@@ -1110,7 +1171,8 @@ document.getElementById("guardar").onclick = ()=>{
         left: box.style.left, top: box.style.top,
         width: box.style.width, height: box.style.height,
         src: box.dataset.src || "",
-        ajuste: box.dataset.ajuste || "contain"
+        ajuste: box.dataset.ajuste || "contain",
+        orden: numeroSeguro(box.dataset.orden, 0)
       };
     } else {
       const iframe = box.querySelector("iframe");
@@ -1120,7 +1182,8 @@ document.getElementById("guardar").onclick = ()=>{
         width: box.style.width, height: box.style.height,
         baseWidth: parseFloat(box.dataset.baseWidth),
         baseHeight: parseFloat(box.dataset.baseHeight),
-        link: iframe ? iframe.src : ""
+        link: iframe ? iframe.src : "",
+        orden: numeroSeguro(box.dataset.orden, 0)
       };
     }
   });
