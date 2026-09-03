@@ -481,7 +481,7 @@ iframe{
 
 <script type="module">
 import { database, ref, set, get, remove, onValue } from "./firebase.js";
-import { aplicarAnimacion, actualizarValorAnimado } from "./animaciones.js";
+import { aplicarAnimacion, actualizarValorAnimado, detenerAnimacion } from "./animaciones.js";
 
 const canvas = document.getElementById("canvas");
 
@@ -1079,6 +1079,7 @@ document.getElementById("eliminar").onclick = ()=>{
   const id = seleccionada.id;
   const tipo = seleccionada.dataset.tipo;
   if(moveables[id]){ moveables[id].destroy(); delete moveables[id]; }
+  if(tipo === "texto") detenerAnimacion(id);
   seleccionada.remove();
   if(tipo === "imagen"){
     delete visibilidadImagenLocal[id];
