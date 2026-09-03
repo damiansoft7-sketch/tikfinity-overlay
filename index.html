@@ -478,11 +478,15 @@ iframe{
 </div>
 
 <script type="module">
-import { database, ref, set, get, remove, onValue } from "./firebase.js";
+import { database, ref, set, get, remove, update, onValue } from "./firebase.js";
 import { aplicarAnimacion, actualizarValorAnimado, detenerAnimacion } from "./animaciones.js";
 import { hexToRgb, aplicarEstilosAElemento } from "./estilos.js";
 
 const canvas = document.getElementById("canvas");
+
+// Snapshot de lo último que sabemos que hay guardado en Firebase (diseño/<id> -> JSON string).
+// Se usa para no reenviar cajas que no cambiaron desde el último guardado.
+let ultimoGuardado = {};
 
 const cajasPorDefecto = {
   box1: { tipo:"iframe", left:"50px",  top:"200px",  width:"400px", height:"150px", baseWidth:400, baseHeight:150, link:"https://tikfinity.zerody.one/widget/topliker?cid=2357749" },
@@ -1120,8 +1124,38 @@ document.getElementById("guardar").onclick = ()=>{
       };
     }
   });
-  set(ref(database, "diseño"), diseño)
-    .then(()=> alert("✅ Diseño guardado correctamente"))
+  // ── Optimización: solo subir a Firebase lo que realmente cambió ──
+  // Comparamos cada caja contra el snapshot de lo último guardado (ultimoGuardado).
+  // Esto evita, por ejemplo, reenviar imágenes en base64 sin tocar solo porque
+  // se guardó el diseño por haber movido una caja de texto distinta.
+  const cambios = {};
+
+  Object.keys(diseño).forEach(id=>{
+    const valorNuevo = JSON.stringify(diseño[id]);
+    if(ultimoGuardado[id] !== valorNuevo){
+      cambios["diseño/" + id] = diseño[id];
+    }
+  });
+  // Cajas que existían en el último guardado pero ya no están en el diseño actual
+  // (se eliminaron): hay que borrarlas también del lado de Firebase.
+  Object.keys(ultimoGuardado).forEach(id=>{
+    if(!(id in diseño)){
+      cambios["diseño/" + id] = null;
+    }
+  });
+
+  if(Object.keys(cambios).length === 0){
+    alert("✅ No hay cambios que guardar.");
+    return;
+  }
+
+  update(ref(database), cambios)
+    .then(()=>{
+      // Actualizar el snapshot local para que el próximo guardado compare contra este estado
+      ultimoGuardado = {};
+      Object.keys(diseño).forEach(id=>{ ultimoGuardado[id] = JSON.stringify(diseño[id]); });
+      alert("✅ Diseño guardado correctamente");
+    })
     .catch(err=> alert("❌ Error al guardar: " + err.message));
 };
 
@@ -1150,13 +1184,21 @@ document.getElementById("modalEditarGuardar").onclick = ()=>{
 // CARGA INICIAL
 async function iniciar(){
   const snapshot = await get(ref(database, "diseño"));
-  const datos = snapshot.exists() ? snapshot.val() : cajasPorDefecto;
+  const existiaEnFirebase = snapshot.exists();
+  const datos = existiaEnFirebase ? snapshot.val() : cajasPorDefecto;
   Object.keys(datos).forEach(id=>{
     const item = datos[id];
     if(item.tipo === "texto") crearBoxTexto(id, item);
     else if(item.tipo === "iframe") crearBoxIframe(id, item);
     else if(item.tipo === "imagen") crearBoxImagen(id, item);
   });
+  // Si el diseño ya existía en Firebase, tomamos nota de cómo estaba cada caja.
+  // Si no existía (primera vez, usando cajasPorDefecto), dejamos ultimoGuardado
+  // vacío a propósito: esas cajas todavía no están en Firebase, así que el
+  // primer GUARDAR DISEÑO debe subirlas todas.
+  if(existiaEnFirebase){
+    Object.keys(datos).forEach(id=>{ ultimoGuardado[id] = JSON.stringify(datos[id]); });
+  }
 }
 iniciar();
 </script>
