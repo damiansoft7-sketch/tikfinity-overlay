@@ -318,6 +318,7 @@ iframe{
 <div id="panel">
   <button id="guardar">GUARDAR DISEÑO</button>
   <button id="agregar">➕ AGREGAR ELEMENTO</button>
+  <button id="agregarLightstream">➕ AGREGAR LIGHTSTREAM</button>
   <button id="agregarTexto">🔤 AGREGAR TEXTO</button>
   <button id="agregarImagen">🖼 AGREGAR IMAGEN</button>
   <button id="traerFrente">⬆ Traer al frente</button>
@@ -1081,6 +1082,29 @@ document.getElementById("agregar").onclick = ()=>{
   const link = prompt("Pega el enlace (URL) del widget de Tikfinity:");
   if(!link) return;
   crearBoxIframe("box_"+Date.now(), { left:"100px", top:"100px", width:"400px", height:"150px", baseWidth:400, baseHeight:150, link, orden: ordenParaCajaNueva() });
+};
+
+// BOTÓN AGREGAR LIGHTSTREAM (usa el proxy para evitar el bloqueo de X-Frame-Options)
+const PROXY_LIGHTSTREAM = "https://plain-unit-68f4.damian-soft7.workers.dev";
+
+document.getElementById("agregarLightstream").onclick = ()=>{
+  let linkOriginal = prompt("Pega el enlace del overlay de Lightstream\n(ej: https://lightstream.lat/overlay/heart-me-goal/tu-id)");
+  if(!linkOriginal) return;
+  linkOriginal = linkOriginal.trim();
+
+  // Si por error pegan ya el link completo con el proxy, lo detectamos y evitamos duplicarlo
+  if(linkOriginal.includes(PROXY_LIGHTSTREAM)){
+    alert("Parece que ya pegaste el link completo con el proxy. Solo pega el link normal de lightstream.lat, el proxy se agrega solo.");
+    return;
+  }
+
+  if(!linkOriginal.startsWith("https://lightstream.lat/")){
+    alert("Ese link no parece ser de lightstream.lat, revisa que esté bien copiado.\n\nDebe empezar con: https://lightstream.lat/overlay/...");
+    return;
+  }
+
+  const linkProxy = PROXY_LIGHTSTREAM + "/?url=" + encodeURIComponent(linkOriginal);
+  crearBoxIframe("box_"+Date.now(), { left:"100px", top:"100px", width:"400px", height:"150px", baseWidth:400, baseHeight:150, link: linkProxy, orden: ordenParaCajaNueva() });
 };
 
 // BOTÓN AGREGAR TEXTO
