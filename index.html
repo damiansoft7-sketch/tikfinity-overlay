@@ -112,6 +112,120 @@ iframe{
 .box.oculta-en-editor{
   opacity:0.35;
 }
+.box{ touch-action:none; }
+#vista{ touch-action:none; }
+
+/* Panel de capas (izquierda, junto a la barra de botones) */
+#panelCapas{
+  position:fixed;
+  top:15px; left:250px;
+  width:240px;
+  max-height:90vh;
+  background:#1a1a1a;
+  border:1px solid #333;
+  border-radius:8px;
+  z-index:998;
+  display:none;
+  flex-direction:column;
+  overflow:hidden;
+}
+#panelCapasHeader{
+  padding:10px 12px;
+  font-size:13px;
+  font-weight:bold;
+  color:#ccc;
+  background:#111;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-shrink:0;
+}
+#panelCapasHeader button{
+  background:none; border:none; color:#888; font-size:15px; cursor:pointer;
+}
+#panelCapasAyuda{
+  padding:6px 12px 0;
+  font-size:10.5px;
+  color:#777;
+  flex-shrink:0;
+}
+#panelCapasLista{
+  overflow-y:auto;
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.capa-fila{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  background:#242424;
+  border-radius:5px;
+  padding:5px 5px;
+}
+.capa-fila.activa{
+  background:#0d3d4d;
+  outline:1px solid #00e5ff;
+}
+.capa-nombre{
+  flex:1;
+  font-size:12px;
+  color:#ddd;
+  cursor:pointer;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.capa-fila.oculta .capa-nombre{
+  color:#666;
+  text-decoration:line-through;
+}
+.capa-btn{
+  background:#333;
+  border:none;
+  color:#ddd;
+  width:25px; height:25px;
+  border-radius:4px;
+  font-size:12px;
+  cursor:pointer;
+  flex-shrink:0;
+  padding:0;
+}
+.capa-btn:hover{ background:#444; }
+.capa-btn.activo{ background:#2196F3; }
+
+/* ═══════════════════ MOBILE ═══════════════════ */
+@media (max-width:900px){
+  #panel{
+    top:0; left:0; right:0; bottom:auto;
+    flex-direction:row;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    gap:6px;
+    padding:8px;
+    background:rgba(15,15,15,0.92);
+    -webkit-overflow-scrolling:touch;
+  }
+  #panel button{
+    padding:10px 12px;
+    font-size:12px;
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+  #panelEstilos{
+    top:auto; bottom:0; left:0; right:0;
+    width:100%; height:48vh;
+    border-left:none; border-top:1px solid #333;
+  }
+  #panelCapas{
+    top:auto; bottom:0; left:0; right:0;
+    width:100%; height:45vh;
+    max-height:none;
+  }
+  .capa-btn{ width:30px; height:30px; font-size:14px; }
+  .btn-ojo{ width:32px; height:32px; font-size:16px; }
+}
 .badge-oculta{
   position:absolute;
   top:4px; left:4px;
@@ -321,6 +435,7 @@ iframe{
   <button id="agregarLightstream">➕ AGREGAR LIGHTSTREAM</button>
   <button id="agregarTexto">🔤 AGREGAR TEXTO</button>
   <button id="agregarImagen">🖼 AGREGAR IMAGEN</button>
+  <button id="toggleCapas">🗂 CAPAS</button>
   <button id="traerFrente">⬆ Traer al frente</button>
   <button id="enviarAtras">⬇ Enviar atrás</button>
   <button id="eliminar">🗑 ELIMINAR SELECCIONADO</button>
@@ -437,6 +552,13 @@ iframe{
 
   </div>
   <button id="panelEstilosAplicar">✅ Aplicar estilos</button>
+</div>
+
+<!-- PANEL DE CAPAS -->
+<div id="panelCapas">
+  <div id="panelCapasHeader">🗂 Capas <button id="cerrarCapas" title="Cerrar">✕</button></div>
+  <div id="panelCapasAyuda">Tocá un elemento para seleccionarlo. 👁 lo oculta solo en el editor (no afecta lo que ve tu público). 🔒 evita moverlo por error.</div>
+  <div id="panelCapasLista"></div>
 </div>
 
 <div id="vista">
@@ -717,16 +839,53 @@ document.getElementById("panelEstilosAplicar").onclick = ()=>{
 // ═══════════════════════════════════════════════════════
 //  MOVEABLES Y CAJAS
 // ═══════════════════════════════════════════════════════
-const moveables = {};
 let seleccionada = null;
 const BASE_WIDTH_DEFAULT = 400;
 const BASE_HEIGHT_DEFAULT = 150;
 
+// ═══════════════════════════════════════════════════════
+//  MOVEABLE ÚNICO COMPARTIDO
+//  Antes cada caja tenía su propia instancia de Moveable activa todo
+//  el tiempo, por eso se veían los controles azules de TODAS las cajas
+//  a la vez (desorden visual + fácil agarrar la caja equivocada).
+//  Ahora hay UNA sola instancia cuyo "target" cambia a la caja
+//  seleccionada; el resto de las cajas no muestra ningún control.
+// ═══════════════════════════════════════════════════════
+let moveableInstance = null;
+function inicializarMoveableGlobal(){
+  moveableInstance = new Moveable(document.body, {
+    target: null, draggable: true, resizable: true, origin: false
+  })
+  .on("drag", e=>{ e.target.style.left = e.left+"px"; e.target.style.top = e.top+"px"; })
+  .on("resize", e=>{
+    e.target.style.width = e.width+"px"; e.target.style.height = e.height+"px";
+    if(e.target.dataset.tipo === "iframe") actualizarEscalaContenido(e.target);
+  });
+}
+inicializarMoveableGlobal();
+
+// Capas bloqueadas (no se pueden arrastrar/redimensionar) y ocultas
+// (opacidad 0 en el editor, solo para trabajar más cómodo — NO afecta
+// lo que ve el público en overlay.html).
+const bloqueadas = new Set();
+const ocultasEditor = new Set();
+
 function ajustarEditor(){
-  let escala = Math.min(
-    (window.innerWidth - 260) / 1080,
-    (window.innerHeight - 100) / 1920
-  );
+  const esMovil = window.matchMedia("(max-width: 900px)").matches;
+  let escala;
+  if(esMovil){
+    // En mobile el panel de botones va arriba (horizontal) y los paneles
+    // de estilos/capas son hojas que se superponen abajo, no empujan el canvas.
+    escala = Math.min(
+      window.innerWidth / 1080,
+      (window.innerHeight - 70) / 1920
+    );
+  } else {
+    escala = Math.min(
+      (window.innerWidth - 260) / 1080,
+      (window.innerHeight - 100) / 1920
+    );
+  }
   canvas.style.transform = `scale(${escala})`;
 }
 let resizeEditorPendiente = false;
@@ -805,7 +964,7 @@ function crearBoxIframe(id, datos){
   actualizarEscalaContenido(box);
   box.addEventListener("click", e=>{ e.stopPropagation(); seleccionarBox(box); });
   box.addEventListener("dblclick", e=>{ e.stopPropagation(); editarBoxIframe(box); });
-  activarMoveable(box);
+  renderPanelCapas();
   return box;
 }
 
@@ -882,7 +1041,7 @@ function crearBoxImagen(id, datos){
 
   box.addEventListener("click", e=>{ e.stopPropagation(); seleccionarBox(box); });
   box.addEventListener("dblclick", e=>{ e.stopPropagation(); editarBoxImagen(box); });
-  activarMoveable(box);
+  renderPanelCapas();
   return box;
 }
 
@@ -931,7 +1090,7 @@ function crearBoxTexto(id, datos){
 
   box.addEventListener("click", e=>{ e.stopPropagation(); seleccionarBox(box); });
   box.addEventListener("dblclick", e=>{ e.stopPropagation(); editarBoxTexto(box); });
-  activarMoveable(box);
+  renderPanelCapas();
   return box;
 }
 
@@ -1040,22 +1199,17 @@ document.getElementById("modalImagenGuardar").onclick = ()=>{
   imagenBase64Pendiente = null;
 };
 
-function activarMoveable(box){
-  const m = new Moveable(document.body, {
-    target: box, draggable: true, resizable: true, origin: false
-  })
-  .on("drag", e=>{ box.style.left = e.left+"px"; box.style.top = e.top+"px"; })
-  .on("resize", e=>{
-    box.style.width = e.width+"px"; box.style.height = e.height+"px";
-    if(box.dataset.tipo === "iframe") actualizarEscalaContenido(box);
-  });
-  moveables[box.id] = m;
-}
-
 function seleccionarBox(box){
+  if(ocultasEditor.has(box.id)) return; // no se puede seleccionar algo oculto en el editor
+
   if(seleccionada) seleccionada.classList.remove("seleccionado");
   seleccionada = box;
   box.classList.add("seleccionado");
+
+  // Asignar el Moveable único a esta caja — así solo ella muestra
+  // los controles de mover/redimensionar. Si está bloqueada, no se
+  // le asigna (para que no se pueda mover ni redimensionar por error).
+  moveableInstance.target = bloqueadas.has(box.id) ? null : box;
 
   // Si es caja de texto, mostrar panel de estilos
   if(box.dataset.tipo === "texto"){
@@ -1068,14 +1222,115 @@ function seleccionarBox(box){
     panelEstilos.style.display = "none";
     cajaEnEstilos = null;
   }
+  renderPanelCapas();
 }
 
 document.getElementById("vista").addEventListener("click", ()=>{
   if(seleccionada){ seleccionada.classList.remove("seleccionado"); seleccionada = null; }
+  if(moveableInstance) moveableInstance.target = null;
   panelEstilos.style.display = "none";
   cajaEnEstilos = null;
   ajustarEditor();
+  renderPanelCapas();
 });
+
+// ═══════════════════════════════════════════════════════
+//  PANEL DE CAPAS
+// ═══════════════════════════════════════════════════════
+const panelCapas = document.getElementById("panelCapas");
+const panelCapasLista = document.getElementById("panelCapasLista");
+
+document.getElementById("toggleCapas").onclick = ()=>{
+  const abierto = panelCapas.style.display === "flex";
+  panelCapas.style.display = abierto ? "none" : "flex";
+  if(!abierto) renderPanelCapas();
+};
+document.getElementById("cerrarCapas").onclick = ()=>{ panelCapas.style.display = "none"; };
+
+function etiquetaCaja(box){
+  const tipo = box.dataset.tipo;
+  if(tipo === "texto"){
+    const contenido = box.querySelector(".texto-contenido");
+    const txt = (contenido && (contenido.dataset.valorActual || contenido.textContent)) || "";
+    return "🔤 " + (txt.trim().slice(0, 20) || "Texto");
+  }
+  if(tipo === "imagen") return "🖼 Imagen";
+  return "▶ Widget";
+}
+
+function renderPanelCapas(){
+  if(!panelCapasLista || panelCapas.style.display !== "flex") return;
+  const cajas = Array.from(document.querySelectorAll(".box"));
+  cajas.sort((a,b)=> numeroSeguro(b.dataset.orden,0) - numeroSeguro(a.dataset.orden,0));
+
+  panelCapasLista.innerHTML = "";
+  cajas.forEach(box=>{
+    const oculta = ocultasEditor.has(box.id);
+    const bloqueada = bloqueadas.has(box.id);
+
+    const fila = document.createElement("div");
+    fila.className = "capa-fila" + (box === seleccionada ? " activa" : "") + (oculta ? " oculta" : "");
+
+    const nombre = document.createElement("span");
+    nombre.className = "capa-nombre";
+    nombre.textContent = etiquetaCaja(box);
+    nombre.title = box.id;
+    nombre.onclick = ()=> seleccionarBox(box);
+    fila.appendChild(nombre);
+
+    const btnSubir = document.createElement("button");
+    btnSubir.className = "capa-btn"; btnSubir.textContent = "↑"; btnSubir.title = "Subir de capa";
+    btnSubir.onclick = (e)=>{ e.stopPropagation(); box.dataset.orden = numeroSeguro(box.dataset.orden,0)+1; aplicarOrden(box); renderPanelCapas(); };
+    fila.appendChild(btnSubir);
+
+    const btnBajar = document.createElement("button");
+    btnBajar.className = "capa-btn"; btnBajar.textContent = "↓"; btnBajar.title = "Bajar de capa";
+    btnBajar.onclick = (e)=>{ e.stopPropagation(); box.dataset.orden = numeroSeguro(box.dataset.orden,0)-1; aplicarOrden(box); renderPanelCapas(); };
+    fila.appendChild(btnBajar);
+
+    const btnOjoCapa = document.createElement("button");
+    btnOjoCapa.className = "capa-btn" + (oculta ? " activo" : "");
+    btnOjoCapa.textContent = oculta ? "🙈" : "👁";
+    btnOjoCapa.title = "Mostrar/ocultar SOLO en el editor";
+    btnOjoCapa.onclick = (e)=>{
+      e.stopPropagation();
+      if(oculta){
+        ocultasEditor.delete(box.id);
+        box.style.display = "";
+      } else {
+        ocultasEditor.add(box.id);
+        box.style.display = "none";
+        if(seleccionada === box){
+          seleccionada.classList.remove("seleccionado");
+          seleccionada = null;
+          if(moveableInstance) moveableInstance.target = null;
+          panelEstilos.style.display = "none";
+          cajaEnEstilos = null;
+        }
+      }
+      renderPanelCapas();
+    };
+    fila.appendChild(btnOjoCapa);
+
+    const btnLock = document.createElement("button");
+    btnLock.className = "capa-btn" + (bloqueada ? " activo" : "");
+    btnLock.textContent = bloqueada ? "🔒" : "🔓";
+    btnLock.title = "Bloquear/desbloquear posición";
+    btnLock.onclick = (e)=>{
+      e.stopPropagation();
+      if(bloqueada){
+        bloqueadas.delete(box.id);
+      } else {
+        bloqueadas.add(box.id);
+        if(moveableInstance && moveableInstance.target === box) moveableInstance.target = null;
+      }
+      renderPanelCapas();
+    };
+    fila.appendChild(btnLock);
+
+    panelCapasLista.appendChild(fila);
+  });
+}
 
 // BOTÓN AGREGAR IFRAME
 document.getElementById("agregar").onclick = ()=>{
@@ -1121,11 +1376,13 @@ document.getElementById("traerFrente").onclick = ()=>{
   if(!seleccionada){ alert("Selecciona primero una caja haciendo click sobre ella."); return; }
   seleccionada.dataset.orden = ordenMaximo() + 1;
   aplicarOrden(seleccionada);
+  renderPanelCapas();
 };
 document.getElementById("enviarAtras").onclick = ()=>{
   if(!seleccionada){ alert("Selecciona primero una caja haciendo click sobre ella."); return; }
   seleccionada.dataset.orden = ordenMinimo() - 1;
   aplicarOrden(seleccionada);
+  renderPanelCapas();
 };
 
 // BOTÓN ELIMINAR
@@ -1134,9 +1391,11 @@ document.getElementById("eliminar").onclick = ()=>{
   if(!confirm("¿Eliminar esta caja? Esta acción no se puede deshacer.")) return;
   const id = seleccionada.id;
   const tipo = seleccionada.dataset.tipo;
-  if(moveables[id]){ moveables[id].destroy(); delete moveables[id]; }
+  if(moveableInstance && moveableInstance.target === seleccionada) moveableInstance.target = null;
   if(tipo === "texto") detenerAnimacion(id);
   seleccionada.remove();
+  bloqueadas.delete(id);
+  ocultasEditor.delete(id);
   if(tipo === "imagen"){
     delete visibilidadImagenLocal[id];
     remove(ref(database, "visibilidadImagen/" + id))
@@ -1148,6 +1407,7 @@ document.getElementById("eliminar").onclick = ()=>{
   seleccionada = null;
   panelEstilos.style.display = "none";
   cajaEnEstilos = null;
+  renderPanelCapas();
 };
 
 // BOTÓN GUARDAR — ahora incluye estilos en Firebase
@@ -1286,6 +1546,7 @@ async function iniciar(){
   if(existiaEnFirebase){
     Object.keys(datos).forEach(id=>{ ultimoGuardado[id] = JSON.stringify(datos[id]); });
   }
+  renderPanelCapas();
 }
 iniciar();
 </script>
