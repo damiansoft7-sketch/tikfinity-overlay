@@ -424,6 +424,77 @@ iframe{
 .capa-btn:hover{ background:#3a4058; color:var(--text); }
 .capa-btn.activo{ background:var(--accent); color:#fff; }
 
+/* ═══════════════════ ZOOM ═══════════════════ */
+#zoomBar{
+  position:fixed;
+  left:50%; bottom:18px;
+  transform:translateX(-50%);
+  z-index:900;
+  display:flex;
+  align-items:center;
+  gap:4px;
+  background:linear-gradient(180deg, var(--bg-2), var(--bg-1));
+  border:1px solid var(--border);
+  border-radius:999px;
+  box-shadow:var(--shadow-lg);
+  padding:6px;
+}
+.zoom-btn, #zoomAjustar{
+  width:34px; height:34px;
+  border-radius:50%;
+  border:none;
+  background:var(--bg-3);
+  color:var(--text);
+  font-size:16px;
+  font-weight:700;
+  font-family:inherit;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  transition:background .12s ease, transform .06s ease;
+  flex-shrink:0;
+}
+.zoom-btn:hover, #zoomAjustar:hover{ background:var(--bg-4); }
+.zoom-btn:active, #zoomAjustar:active{ transform:scale(.92); }
+#zoomAjustar{ font-size:15px; color:var(--text-dim); }
+#zoomValor{
+  min-width:52px;
+  text-align:center;
+  font-size:12.5px;
+  font-weight:700;
+  color:var(--text-dim);
+  font-variant-numeric:tabular-nums;
+  cursor:pointer;
+  padding:6px 4px;
+  border-radius:8px;
+  user-select:none;
+}
+#zoomValor:hover{ background:var(--bg-3); color:var(--text); }
+
+/* Los controles de Moveable se crean fuera de #vista, directo en <body>;
+   sin esto, tocarlos en Android dispara gestos nativos (scroll/zoom) en vez
+   de arrancar el arrastre/resize. */
+[class*="moveable-"]{ touch-action:none; }
+
+/* En pantallas táctiles, agrandamos los "puntitos" de resize de Moveable
+   para que sean más fáciles de tocar con el dedo (en mouse quedan iguales). */
+@media (pointer:coarse){
+  .moveable-control{
+    width:24px !important;
+    height:24px !important;
+    margin-top:-12px !important;
+    margin-left:-12px !important;
+  }
+  .moveable-line{ width:3px !important; }
+}
+
+@media (max-width:900px){
+  #zoomBar{ bottom:10px; padding:5px; gap:3px; }
+  .zoom-btn, #zoomAjustar{ width:32px; height:32px; font-size:15px; }
+}
+
 /* ═══════════════════ TOASTS ═══════════════════ */
 #toastContainer{
   position:fixed;
@@ -747,6 +818,13 @@ iframe{
     <div id="marco"></div>
     <div id="zona"></div>
   </div>
+</div>
+
+<div id="zoomBar">
+  <button class="zoom-btn" id="zoomMenos" title="Alejar" type="button">−</button>
+  <span id="zoomValor" title="Restablecer a 100%">100%</span>
+  <button class="zoom-btn" id="zoomMas" title="Acercar" type="button">+</button>
+  <button id="zoomAjustar" title="Ajustar a pantalla" type="button">⛶</button>
 </div>
 
 <div id="toastContainer"></div>
@@ -1274,22 +1352,45 @@ document.addEventListener("keydown", (e)=>{
   temporizadorFlecha = setTimeout(()=>{ historialFlechaPendiente = false; }, 600);
 });
 
-function ajustarEditor(){
+// ═══════════════════════════════════════════════════════
+//  ZOOM — reemplaza el zoom nativo del navegador por uno propio del editor,
+//  para que el pellizco (pinch) en Android quede centrado donde el usuario
+//  toca y no dependa del comportamiento del navegador.
+// ═══════════════════════════════════════════════════════
+const ZOOM_MIN = 0.4, ZOOM_MAX = 3, ZOOM_PASO = 0.1;
+let escalaAjuste = 1;   // escala calculada para que el canvas entre en pantalla ("100%")
+let factorZoom = 1;     // multiplicador manual sobre escalaAjuste (lo mueven los botones/pellizco)
+const zoomValorEl = document.getElementById("zoomValor");
+
+function calcularEscalaAjuste(){
   const esMovil = window.matchMedia("(max-width: 900px)").matches;
-  let escala;
   if(esMovil){
-    escala = Math.min(
-      window.innerWidth / 1080,
-      (window.innerHeight - 70) / 1920
-    );
-  } else {
-    escala = Math.min(
-      (window.innerWidth - 520) / 1080,
-      (window.innerHeight - 40) / 1920
-    );
+    return Math.min(window.innerWidth / 1080, (window.innerHeight - 70) / 1920);
   }
-  canvas.style.transform = `scale(${escala})`;
+  return Math.min((window.innerWidth - 520) / 1080, (window.innerHeight - 40) / 1920);
 }
+
+function aplicarZoom(){
+  canvas.style.transform = `scale(${escalaAjuste * factorZoom})`;
+  zoomValorEl.textContent = Math.round(factorZoom * 100) + "%";
+}
+
+function ajustarEditor(){
+  escalaAjuste = calcularEscalaAjuste();
+  aplicarZoom();
+}
+
+function establecerZoom(nuevoFactor, origen){
+  factorZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, nuevoFactor));
+  canvas.style.transformOrigin = origen || "center";
+  aplicarZoom();
+}
+
+document.getElementById("zoomMas").onclick = ()=> establecerZoom(factorZoom + ZOOM_PASO);
+document.getElementById("zoomMenos").onclick = ()=> establecerZoom(factorZoom - ZOOM_PASO);
+document.getElementById("zoomAjustar").onclick = ()=> establecerZoom(1);
+zoomValorEl.onclick = ()=> establecerZoom(1);
+
 let resizeEditorPendiente = false;
 window.addEventListener("resize", ()=>{
   if(resizeEditorPendiente) return;
@@ -1297,6 +1398,54 @@ window.addEventListener("resize", ()=>{
   requestAnimationFrame(()=>{ ajustarEditor(); resizeEditorPendiente = false; });
 });
 ajustarEditor();
+
+// ── Pellizco (pinch) con 2 dedos: zoom centrado exactamente donde se pellizca ──
+const vistaEl = document.getElementById("vista");
+let pinchActivo = false;
+let pinchDistanciaInicial = 0;
+let pinchFactorInicial = 1;
+
+function distanciaEntreToques(toques){
+  const dx = toques[0].clientX - toques[1].clientX;
+  const dy = toques[0].clientY - toques[1].clientY;
+  return Math.hypot(dx, dy);
+}
+
+// No arrancamos el pellizco si el toque empezó sobre un handle de Moveable,
+// para no chocar con un redimensionado que ya esté en curso.
+function tocaControlMoveable(elemento){
+  return !!(elemento && elemento.closest && elemento.closest('[class*="moveable-"]'));
+}
+
+vistaEl.addEventListener("touchstart", (e)=>{
+  if(e.touches.length !== 2 || tocaControlMoveable(e.target)) return;
+  pinchActivo = true;
+  pinchDistanciaInicial = distanciaEntreToques(e.touches);
+  pinchFactorInicial = factorZoom;
+
+  const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+  const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+  const rect = canvas.getBoundingClientRect();
+  const xPct = ((midX - rect.left) / rect.width) * 100;
+  const yPct = ((midY - rect.top) / rect.height) * 100;
+  canvas.style.transformOrigin = `${xPct}% ${yPct}%`;
+}, { passive:true });
+
+vistaEl.addEventListener("touchmove", (e)=>{
+  if(!pinchActivo || e.touches.length !== 2) return;
+  e.preventDefault();
+  const ratio = distanciaEntreToques(e.touches) / pinchDistanciaInicial;
+  factorZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, pinchFactorInicial * ratio));
+  aplicarZoom();
+}, { passive:false });
+
+function terminarPinch(){
+  if(!pinchActivo) return;
+  pinchActivo = false;
+  canvas.style.transformOrigin = "center";
+}
+vistaEl.addEventListener("touchend", terminarPinch);
+vistaEl.addEventListener("touchcancel", terminarPinch);
 
 function actualizarEscalaContenido(box){
   const iframe = box.querySelector("iframe");
