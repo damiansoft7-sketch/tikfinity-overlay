@@ -1043,11 +1043,23 @@ function confirmar(titulo, texto){
       fondo.style.display = "none";
       btnAceptar.onclick = null;
       btnCancelar.onclick = null;
+      document.removeEventListener("keydown", manejarTecla, true);
       resolve(resultado);
     }
+    // Enter confirma, Escape cancela — se registra en fase de captura para
+    // que se resuelva antes que cualquier otro atajo de teclado del editor.
+    function manejarTecla(e){
+      if(e.key === "Enter"){ e.preventDefault(); e.stopPropagation(); limpiar(true); }
+      else if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); limpiar(false); }
+    }
+    document.addEventListener("keydown", manejarTecla, true);
     btnAceptar.onclick = ()=> limpiar(true);
     btnCancelar.onclick = ()=> limpiar(false);
   });
+}
+
+function hayModalConfirmAbierto(){
+  return document.getElementById("modalConfirmFondo").style.display === "flex";
 }
 
 // Snapshot de lo último que sabemos que hay guardado en Firebase (diseño/<id> -> JSON string).
@@ -1452,13 +1464,120 @@ actualizarBotonDeshacer();
 // Atajo de teclado Ctrl+Z / Cmd+Z, y movimiento con flechas del teclado
 let historialFlechaPendiente = false;
 let temporizadorFlecha = null;
+
+// Portapapeles interno del editor para Ctrl+C / Ctrl+V (no usa el
+// portapapeles del sistema operativo, así que no compite con copiar/pegar
+// texto en otros lados de la página).
+let portapapelesElemento = null;
+let contadorPegado = 0;
+
+function pegarElementoCopiado(){
+  if(!portapapelesElemento) return;
+  checkpoint();
+  contadorPegado++;
+  const datos = JSON.parse(JSON.stringify(portapapelesElemento));
+  datos.left = (parseFloat(portapapelesElemento.left) || 0) + 24 * contadorPegado + "px";
+  datos.top  = (parseFloat(portapapelesElemento.top)  || 0) + 24 * contadorPegado + "px";
+  datos.orden = ordenParaCajaNueva();
+  const id = datos.tipo + "_" + Date.now();
+  let nuevaBox;
+  if(datos.tipo === "texto"){
+    nuevaBox = crearBoxTexto(id, datos);
+    set(ref(database, "textoLive/"+id), datos.contenido).catch(()=>{});
+  } else if(datos.tipo === "imagen"){
+    nuevaBox = crearBoxImagen(id, datos);
+  } else {
+    nuevaBox = crearBoxIframe(id, datos);
+  }
+  seleccionarBox(nuevaBox);
+  mostrarToast("📋 Elemento pegado", "success", 1600);
+}
+
+// Ctrl+L — bloquear/desbloquear la caja seleccionada (mismo interruptor que
+// el botón 🔒/🔓 del panel de capas).
+function alternarBloqueoSeleccionada(){
+  if(!seleccionada) return;
+  const id = seleccionada.id;
+  if(bloqueadas.has(id)){
+    bloqueadas.delete(id);
+    mostrarToast("🔓 Desbloqueada", "info", 1500);
+  } else {
+    bloqueadas.add(id);
+    if(moveableInstance && moveableInstance.target === seleccionada) moveableInstance.target = null;
+    mostrarToast("🔒 Bloqueada", "info", 1500);
+  }
+  renderPanelCapas();
+}
+
+// Ctrl+Q — mostrar/ocultar EN VIVO la imagen seleccionada (mismo interruptor
+// que el botón 👁 dentro de la caja de imagen; solo aplica a imágenes).
+function alternarVisibilidadEnVivoSeleccionada(){
+  if(!seleccionada || seleccionada.dataset.tipo !== "imagen"){
+    mostrarToast("⚠ Ctrl+Q solo funciona con una imagen seleccionada", "warn");
+    return;
+  }
+  const id = seleccionada.id;
+  const visibleActual = visibilidadImagenLocal[id] !== false;
+  const nuevoValor = !visibleActual;
+  visibilidadImagenLocal[id] = nuevoValor;
+  actualizarAparienciaOculta(seleccionada, nuevoValor);
+  set(ref(database, "visibilidadImagen/" + id), nuevoValor)
+    .catch(err => mostrarToast("❌ No se pudo cambiar la visibilidad en vivo: " + err.message, "error"));
+  mostrarToast(nuevoValor ? "👁 Imagen visible en vivo" : "🙈 Imagen oculta en vivo", "info", 1600);
+}
+
 document.addEventListener("keydown", (e)=>{
+  // Mientras el modal de confirmación esté abierto, es él quien maneja
+  // Enter/Escape — no dejamos que ningún atajo de acá interfiera.
+  if(hayModalConfirmAbierto()) return;
+
   const tag = (document.activeElement && document.activeElement.tagName) || "";
   const escribiendo = tag === "INPUT" || tag === "TEXTAREA" || (document.activeElement && document.activeElement.isContentEditable);
 
   if((e.key === "z" || e.key === "Z") && (e.ctrlKey || e.metaKey) && !escribiendo){
     e.preventDefault();
     deshacer();
+    return;
+  }
+
+  if(!escribiendo && (e.ctrlKey || e.metaKey)){
+    if(e.key === "c" || e.key === "C"){
+      if(seleccionada){
+        e.preventDefault();
+        portapapelesElemento = datosDeBox(seleccionada);
+        contadorPegado = 0;
+        mostrarToast("📋 Elemento copiado", "info", 1500);
+      }
+      return;
+    }
+    if(e.key === "v" || e.key === "V"){
+      if(portapapelesElemento){
+        e.preventDefault();
+        pegarElementoCopiado();
+      }
+      return;
+    }
+    if(e.key === "l" || e.key === "L"){
+      if(seleccionada){
+        e.preventDefault();
+        alternarBloqueoSeleccionada();
+      }
+      return;
+    }
+    if(e.key === "q" || e.key === "Q"){
+      if(seleccionada){
+        e.preventDefault();
+        alternarVisibilidadEnVivoSeleccionada();
+      }
+      return;
+    }
+  }
+
+  if(!escribiendo && e.key === "Delete"){
+    if(seleccionada){
+      e.preventDefault();
+      eliminarSeleccionada();
+    }
     return;
   }
 
@@ -2420,8 +2539,8 @@ document.getElementById("duplicar").onclick = ()=>{
   mostrarToast("⧉ Elemento duplicado", "success");
 };
 
-// BOTÓN ELIMINAR
-document.getElementById("eliminar").onclick = async ()=>{
+// BOTÓN ELIMINAR (y también se llama desde la tecla Supr)
+async function eliminarSeleccionada(){
   if(!seleccionada){ mostrarToast("Seleccioná primero una caja haciendo click sobre ella", "warn"); return; }
   const ok = await confirmar("Eliminar elemento", "Esta caja se va a borrar del diseño. Podés deshacerlo con Ctrl+Z si te arrepentís.");
   if(!ok) return;
@@ -2444,7 +2563,8 @@ document.getElementById("eliminar").onclick = async ()=>{
   cajaEnEstilos = null;
   renderPanelCapas();
   mostrarToast("🗑 Elemento eliminado", "info");
-};
+}
+document.getElementById("eliminar").onclick = eliminarSeleccionada;
 
 // BOTÓN GUARDAR
 document.getElementById("guardar").onclick = ()=>{
