@@ -535,7 +535,7 @@ iframe{
   flex-shrink:0;
   line-height:1.5;
 }
-#nuevaPlantillaBtn{
+#nuevaPlantillaBtn, #repararIdsBtn{
   margin:10px 10px 0;
   padding:9px;
   border:1px dashed var(--border-soft);
@@ -548,7 +548,8 @@ iframe{
   cursor:pointer;
   flex-shrink:0;
 }
-#nuevaPlantillaBtn:hover{ background:var(--bg-3); color:var(--text); border-style:solid; border-color:var(--accent); }
+#nuevaPlantillaBtn:hover, #repararIdsBtn:hover{ background:var(--bg-3); color:var(--text); border-style:solid; border-color:var(--accent); }
+#repararIdsBtn{ margin-top:6px; border-color:var(--warn); color:var(--warn); }
 #panelPlantillasLista{
   overflow-y:auto;
   padding:10px;
@@ -949,6 +950,7 @@ iframe{
   <div id="panelPlantillasHeader">📚 Biblioteca de plantillas <button id="cerrarPlantillas" title="Cerrar">✕</button></div>
   <div id="panelPlantillasAyuda">La plantilla que abrís pasa a ser la que ve el público al instante. Las demás no consumen nada mientras no estén abiertas.</div>
   <button id="nuevaPlantillaBtn" type="button">➕ Nueva plantilla</button>
+  <button id="repararIdsBtn" type="button">🔧 Reparar textos duplicados</button>
   <div id="panelPlantillasLista"></div>
 </div>
 
@@ -2345,6 +2347,87 @@ async function duplicarPlantilla(idOrigen, nombreOrigen){
   renderPanelPlantillas();
   mostrarToast("⧉ Plantilla duplicada como \"" + nombreNuevo + "\"", "success");
 }
+
+// ═══════════════════════════════════════════════════════
+//  REPARAR TEXTOS DUPLICADOS — herramienta de mantenimiento (se usa una
+//  sola vez, no hace falta correrla seguido) para plantillas duplicadas
+//  ANTES del arreglo de "duplicarPlantilla" de más arriba. Esas plantillas
+//  quedaron con cajas de texto que comparten el mismo ID que su plantilla
+//  de origen, y como "textoLive/<id>" es una ruta global (no por
+//  plantilla), el overlay podía mostrar el texto de la plantilla
+//  equivocada. Acá se detectan esos IDs repetidos entre plantillas y se
+//  les asigna uno nuevo a todas las copias menos a la primera que se
+//  encuentre (esa se deja como "dueña" del ID original).
+//  Widgets (iframe) e imágenes NO se tocan — no tienen este problema.
+// ═══════════════════════════════════════════════════════
+async function repararTextosDuplicados(){
+  mostrarToast("🔎 Revisando plantillas…", "info");
+
+  let snapPlantillas;
+  try{
+    snapPlantillas = await get(ref(database, "plantillas"));
+  } catch(err){
+    mostrarToast("❌ No se pudo leer las plantillas: " + err.message, "error");
+    return;
+  }
+  const todasLasPlantillas = snapPlantillas.exists() ? snapPlantillas.val() : {};
+
+  // 1) Mapear qué IDs de caja de texto aparecen en qué plantillas
+  const dueñoDelId = {}; // idCaja -> idPlantilla que se queda con ese ID tal cual
+  const duplicados = []; // { idPlantilla, idCajaVieja }
+
+  Object.keys(todasLasPlantillas).forEach(idPlantilla=>{
+    const cajas = (todasLasPlantillas[idPlantilla] && todasLasPlantillas[idPlantilla].cajas) || {};
+    Object.keys(cajas).forEach(idCaja=>{
+      if(cajas[idCaja].tipo !== "texto") return;
+      if(!(idCaja in dueñoDelId)){
+        dueñoDelId[idCaja] = idPlantilla; // la primera plantilla que aparece se queda con el ID
+      } else if(dueñoDelId[idCaja] !== idPlantilla){
+        duplicados.push({ idPlantilla, idCajaVieja: idCaja });
+      }
+    });
+  });
+
+  if(duplicados.length === 0){
+    mostrarToast("✅ No se encontraron textos duplicados entre plantillas", "success");
+    return;
+  }
+
+  const plantillasAfectadas = new Set(duplicados.map(d => d.idPlantilla));
+  const nombresAfectados = Array.from(plantillasAfectadas)
+    .map(id => (plantillasMetaCache[id] && plantillasMetaCache[id].nombre) || id)
+    .join(", ");
+
+  const ok = await confirmar(
+    "Reparar textos duplicados",
+    `Se encontraron ${duplicados.length} caja(s) de texto con ID repetido en: ${nombresAfectados}. ` +
+    `Se les va a asignar un ID nuevo (el texto y su contenido no se tocan). ` +
+    `Si alguna de esas plantillas está al aire ahora mismo, esa caja puede parpadear un instante. ¿Continuar?`
+  );
+  if(!ok) return;
+
+  // 2) Armar la actualización: nuevo ID de caja + textoLive sembrado +
+  //    borrar la entrada vieja de esa plantilla puntual (sin tocar la
+  //    plantilla "dueña" del ID original, que sigue como está).
+  const escrituras = {};
+  let contador = 0;
+  duplicados.forEach(({ idPlantilla, idCajaVieja })=>{
+    const caja = todasLasPlantillas[idPlantilla].cajas[idCajaVieja];
+    const idCajaNueva = "texto_" + Date.now() + "_" + (contador++);
+    escrituras["plantillas/" + idPlantilla + "/cajas/" + idCajaVieja] = null;
+    escrituras["plantillas/" + idPlantilla + "/cajas/" + idCajaNueva] = caja;
+    escrituras["textoLive/" + idCajaNueva] = caja.contenido || "";
+  });
+
+  try{
+    await update(ref(database), escrituras);
+  } catch(err){
+    mostrarToast("❌ Error al reparar: " + err.message, "error");
+    return;
+  }
+  mostrarToast(`✅ Reparadas ${duplicados.length} caja(s) de texto`, "success", 4000);
+}
+document.getElementById("repararIdsBtn").onclick = repararTextosDuplicados;
 
 async function renombrarPlantilla(id, nombreActual){
   const nuevoNombre = prompt("Nuevo nombre:", nombreActual);
