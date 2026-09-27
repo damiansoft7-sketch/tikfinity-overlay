@@ -495,6 +495,128 @@ iframe{
   .zoom-btn, #zoomAjustar{ width:32px; height:32px; font-size:15px; }
 }
 
+/* ═══════════════════ BIBLIOTECA DE PLANTILLAS ═══════════════════ */
+#panelPlantillas{
+  position:fixed;
+  top:16px; left:248px;
+  width:270px;
+  max-height:calc(100vh - 32px);
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-lg);
+  z-index:998;
+  display:none;
+  flex-direction:column;
+  overflow:hidden;
+}
+#panelPlantillasHeader{
+  padding:13px 14px;
+  font-size:12.5px;
+  font-weight:700;
+  color:var(--text);
+  background:var(--bg-2);
+  border-bottom:1px solid var(--border);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-shrink:0;
+}
+#panelPlantillasHeader button{
+  background:none; border:none; color:var(--text-faint); font-size:16px; cursor:pointer;
+  width:24px; height:24px; border-radius:6px;
+}
+#panelPlantillasHeader button:hover{ background:var(--bg-4); color:var(--text); }
+#panelPlantillasAyuda{
+  padding:8px 14px 0;
+  font-size:10.5px;
+  color:var(--text-faint);
+  flex-shrink:0;
+  line-height:1.5;
+}
+#nuevaPlantillaBtn{
+  margin:10px 10px 0;
+  padding:9px;
+  border:1px dashed var(--border-soft);
+  border-radius:var(--radius-sm);
+  background:transparent;
+  color:var(--text-dim);
+  font-family:inherit;
+  font-size:12.5px;
+  font-weight:700;
+  cursor:pointer;
+  flex-shrink:0;
+}
+#nuevaPlantillaBtn:hover{ background:var(--bg-3); color:var(--text); border-style:solid; border-color:var(--accent); }
+#panelPlantillasLista{
+  overflow-y:auto;
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.plantilla-card{
+  background:var(--bg-3);
+  border:1px solid transparent;
+  border-radius:var(--radius-sm);
+  padding:9px 10px;
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+.plantilla-card.activa{ border-color:var(--accent); background:rgba(124,108,246,.14); }
+.plantilla-card-nombre{
+  font-size:12.5px;
+  font-weight:600;
+  color:var(--text);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.plantilla-badge{
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.04em;
+  color:#c9c2ff;
+  background:rgba(124,108,246,.22);
+  padding:2px 6px;
+  border-radius:20px;
+  flex-shrink:0;
+}
+.plantilla-card-acciones{
+  display:flex;
+  gap:5px;
+}
+.plantilla-btn{
+  flex:1;
+  padding:6px 4px;
+  font-size:11px;
+  font-weight:700;
+  border:none;
+  border-radius:6px;
+  background:var(--bg-4);
+  color:var(--text-dim);
+  cursor:pointer;
+  font-family:inherit;
+}
+.plantilla-btn:hover{ background:#3a4058; color:var(--text); }
+.plantilla-btn.peligro:hover{ background:var(--danger-dim); color:#ff9ba5; }
+.plantilla-btn.primario{ background:var(--accent-grad); color:#fff; }
+.plantilla-btn.primario:hover{ filter:brightness(1.08); }
+.plantilla-btn:disabled{ opacity:.4; cursor:not-allowed; }
+
+@media (max-width:900px){
+  #panelPlantillas{
+    top:auto; bottom:0; left:0; right:0;
+    width:100%; height:60vh;
+    max-height:none;
+    border-radius:16px 16px 0 0;
+  }
+}
+
 /* ═══════════════════ TOASTS ═══════════════════ */
 #toastContainer{
   position:fixed;
@@ -684,6 +806,7 @@ iframe{
   <div class="tb-grupo">
     <div class="tb-titulo">Panel</div>
     <button class="tb-btn" id="toggleCapas"><span class="ic">🗂</span><span class="txt">Capas</span></button>
+    <button class="tb-btn" id="togglePlantillas"><span class="ic">📚</span><span class="txt">Plantillas</span></button>
   </div>
 
   <div class="tb-hint">Flechas del teclado mueven 1px (Shift = 10px). Ctrl+Z deshace. Arrastrá para alinear con guías.</div>
@@ -810,6 +933,14 @@ iframe{
   <div id="panelCapasHeader">🗂 Capas <button id="cerrarCapas" title="Cerrar">✕</button></div>
   <div id="panelCapasAyuda">Tocá un nombre para seleccionar, doble-click para renombrar. Arrastrá una fila para reordenar. 👁 oculta solo en el editor. 🔒 evita moverla.</div>
   <div id="panelCapasLista"></div>
+</div>
+
+<!-- PANEL BIBLIOTECA DE PLANTILLAS -->
+<div id="panelPlantillas">
+  <div id="panelPlantillasHeader">📚 Biblioteca de plantillas <button id="cerrarPlantillas" title="Cerrar">✕</button></div>
+  <div id="panelPlantillasAyuda">La plantilla que abrís pasa a ser la que ve el público al instante. Las demás no consumen nada mientras no estén abiertas.</div>
+  <button id="nuevaPlantillaBtn" type="button">➕ Nueva plantilla</button>
+  <div id="panelPlantillasLista"></div>
 </div>
 
 <div id="vista">
@@ -1170,6 +1301,10 @@ const BASE_HEIGHT_DEFAULT = 150;
 // (opacidad 0 en el editor, no afecta lo que ve el público en overlay.html).
 const bloqueadas = new Set();
 const ocultasEditor = new Set();
+
+// Plantilla que está abierta ahora mismo en el canvas (también es la que
+// está en vivo — ver panel de Biblioteca de plantillas más abajo).
+let idPlantillaActual = null;
 
 // ═══════════════════════════════════════════════════════
 //  MOVEABLE ÚNICO COMPARTIDO — con snap/alineación a otras cajas y al canvas
@@ -1814,6 +1949,242 @@ document.getElementById("cerrarCapas").onclick = ()=>{
   document.getElementById("toggleCapas").classList.remove("activo");
 };
 
+// ═══════════════════════════════════════════════════════
+//  BIBLIOTECA DE PLANTILLAS
+//  Cada plantilla guarda su propio set de cajas en "plantillas/<id>/cajas".
+//  El editor solo carga en memoria las cajas de la plantilla que tenés
+//  abierta — el resto de la biblioteca solo ocupa espacio en Firebase, no
+//  se lee ni se renderiza mientras no la abras. La plantilla abierta pasa a
+//  ser automáticamente la que está en vivo (misma idea que ya usabas: editar
+//  y guardar era siempre "lo que ve el público", ahora es "lo que ve el
+//  público de ESA plantilla puntual").
+// ═══════════════════════════════════════════════════════
+const panelPlantillas = document.getElementById("panelPlantillas");
+const panelPlantillasLista = document.getElementById("panelPlantillasLista");
+let plantillasMetaCache = {};
+
+document.getElementById("togglePlantillas").onclick = ()=>{
+  const abierto = panelPlantillas.style.display === "flex";
+  panelPlantillas.style.display = abierto ? "none" : "flex";
+  document.getElementById("togglePlantillas").classList.toggle("activo", !abierto);
+  if(!abierto) cargarBibliotecaPlantillas();
+};
+document.getElementById("cerrarPlantillas").onclick = ()=>{
+  panelPlantillas.style.display = "none";
+  document.getElementById("togglePlantillas").classList.remove("activo");
+};
+
+async function cargarBibliotecaPlantillas(){
+  try{
+    const snap = await get(ref(database, "plantillasMeta"));
+    plantillasMetaCache = snap.exists() ? snap.val() : {};
+  } catch(err){
+    mostrarToast("❌ No se pudo cargar la biblioteca: " + err.message, "error");
+    return;
+  }
+  renderPanelPlantillas();
+}
+
+function renderPanelPlantillas(){
+  panelPlantillasLista.innerHTML = "";
+  const ids = Object.keys(plantillasMetaCache);
+  if(ids.length === 0){
+    const vacio = document.createElement("div");
+    vacio.style.cssText = "padding:14px 4px;font-size:12px;color:var(--text-faint);text-align:center;";
+    vacio.textContent = "Todavía no hay plantillas guardadas.";
+    panelPlantillasLista.appendChild(vacio);
+    return;
+  }
+  ids.forEach(id=>{
+    const nombre = (plantillasMetaCache[id] && plantillasMetaCache[id].nombre) || "Sin nombre";
+    const esActual = id === idPlantillaActual;
+
+    const card = document.createElement("div");
+    card.className = "plantilla-card" + (esActual ? " activa" : "");
+
+    const fila1 = document.createElement("div");
+    fila1.className = "plantilla-card-nombre";
+    fila1.innerHTML = `<span style="overflow:hidden;text-overflow:ellipsis;">${nombre}</span>`;
+    if(esActual){
+      const badge = document.createElement("span");
+      badge.className = "plantilla-badge";
+      badge.textContent = "● EN VIVO";
+      fila1.appendChild(badge);
+    }
+    card.appendChild(fila1);
+
+    const acciones = document.createElement("div");
+    acciones.className = "plantilla-card-acciones";
+
+    const btnAbrir = document.createElement("button");
+    btnAbrir.className = "plantilla-btn" + (esActual ? "" : " primario");
+    btnAbrir.textContent = esActual ? "Abierta" : "Abrir";
+    btnAbrir.disabled = esActual;
+    btnAbrir.onclick = ()=> abrirPlantilla(id, nombre);
+    acciones.appendChild(btnAbrir);
+
+    const btnDup = document.createElement("button");
+    btnDup.className = "plantilla-btn";
+    btnDup.textContent = "Duplicar";
+    btnDup.onclick = ()=> duplicarPlantilla(id, nombre);
+    acciones.appendChild(btnDup);
+
+    const btnRen = document.createElement("button");
+    btnRen.className = "plantilla-btn";
+    btnRen.textContent = "Renombrar";
+    btnRen.onclick = ()=> renombrarPlantilla(id, nombre);
+    acciones.appendChild(btnRen);
+
+    const btnDel = document.createElement("button");
+    btnDel.className = "plantilla-btn peligro";
+    btnDel.textContent = "Eliminar";
+    btnDel.onclick = ()=> eliminarPlantilla(id, nombre);
+    acciones.appendChild(btnDel);
+
+    card.appendChild(acciones);
+    panelPlantillasLista.appendChild(card);
+  });
+}
+
+// Vuelca un objeto de cajas (ya obtenido de Firebase, o vacío para una
+// plantilla nueva) en el canvas, reemplazando lo que hubiera. Reutiliza
+// exactamente las mismas funciones de creación que ya usa el historial.
+function cargarPlantillaEnCanvas(id, cajasData){
+  limpiarCanvasCompleto();
+  const cajas = cajasData || {};
+  Object.keys(cajas).forEach(cid=>{
+    const item = cajas[cid];
+    if(item.tipo === "texto") crearBoxTexto(cid, item);
+    else if(item.tipo === "imagen") crearBoxImagen(cid, item);
+    else if(item.tipo === "iframe") crearBoxIframe(cid, item);
+  });
+  idPlantillaActual = id;
+  ultimoGuardado = {};
+  Object.keys(cajas).forEach(cid=>{ ultimoGuardado[cid] = JSON.stringify(cajas[cid]); });
+  historial = [];
+  actualizarBotonDeshacer();
+  sinGuardar = false;
+  renderPanelCapas();
+}
+
+async function abrirPlantilla(id, nombre){
+  if(id === idPlantillaActual) return;
+  if(sinGuardar){
+    const seguir = await confirmar("Cambios sin guardar", "Tenés cambios sin guardar en la plantilla actual. Si abrís otra, esos cambios se van a perder.");
+    if(!seguir) return;
+  }
+  let cajas = {};
+  try{
+    const snap = await get(ref(database, "plantillas/" + id + "/cajas"));
+    cajas = snap.exists() ? snap.val() : {};
+  } catch(err){
+    mostrarToast("❌ No se pudo abrir la plantilla: " + err.message, "error");
+    return;
+  }
+  cargarPlantillaEnCanvas(id, cajas);
+  try{
+    await set(ref(database, "plantillaActiva"), id);
+  } catch(err){
+    mostrarToast("⚠ Se abrió, pero no se pudo activar en vivo: " + err.message, "warn");
+  }
+  renderPanelPlantillas();
+  mostrarToast("📚 \"" + nombre + "\" ahora es la plantilla en vivo", "success");
+}
+
+document.getElementById("nuevaPlantillaBtn").onclick = async ()=>{
+  const nombre = prompt("Nombre de la nueva plantilla:", "Plantilla nueva");
+  if(!nombre) return;
+  if(sinGuardar){
+    const seguir = await confirmar("Cambios sin guardar", "Tenés cambios sin guardar en la plantilla actual. Si creás una nueva, esos cambios se van a perder.");
+    if(!seguir) return;
+  }
+  const id = "plantilla_" + Date.now();
+  try{
+    await update(ref(database), {
+      ["plantillasMeta/" + id]: { nombre },
+      ["plantillas/" + id + "/cajas"]: {},
+      "plantillaActiva": id
+    });
+  } catch(err){
+    mostrarToast("❌ No se pudo crear la plantilla: " + err.message, "error");
+    return;
+  }
+  cargarPlantillaEnCanvas(id, {});
+  plantillasMetaCache[id] = { nombre };
+  renderPanelPlantillas();
+  mostrarToast("✅ Plantilla \"" + nombre + "\" creada y en vivo", "success");
+};
+
+async function duplicarPlantilla(idOrigen, nombreOrigen){
+  const nombreNuevo = prompt("Nombre para la copia:", nombreOrigen + " - copia");
+  if(!nombreNuevo) return;
+  let cajas = {};
+  try{
+    const snap = await get(ref(database, "plantillas/" + idOrigen + "/cajas"));
+    cajas = snap.exists() ? snap.val() : {};
+  } catch(err){
+    mostrarToast("❌ No se pudo duplicar: " + err.message, "error");
+    return;
+  }
+  const idNuevo = "plantilla_" + Date.now();
+  try{
+    await update(ref(database), {
+      ["plantillasMeta/" + idNuevo]: { nombre: nombreNuevo },
+      ["plantillas/" + idNuevo + "/cajas"]: cajas
+    });
+  } catch(err){
+    mostrarToast("❌ No se pudo duplicar: " + err.message, "error");
+    return;
+  }
+  plantillasMetaCache[idNuevo] = { nombre: nombreNuevo };
+  renderPanelPlantillas();
+  mostrarToast("⧉ Plantilla duplicada como \"" + nombreNuevo + "\"", "success");
+}
+
+async function renombrarPlantilla(id, nombreActual){
+  const nuevoNombre = prompt("Nuevo nombre:", nombreActual);
+  if(!nuevoNombre || nuevoNombre === nombreActual) return;
+  try{
+    await set(ref(database, "plantillasMeta/" + id + "/nombre"), nuevoNombre);
+  } catch(err){
+    mostrarToast("❌ No se pudo renombrar: " + err.message, "error");
+    return;
+  }
+  plantillasMetaCache[id] = { nombre: nuevoNombre };
+  renderPanelPlantillas();
+  mostrarToast("✅ Renombrada a \"" + nuevoNombre + "\"", "success");
+}
+
+async function eliminarPlantilla(id, nombre){
+  if(id === idPlantillaActual){
+    mostrarToast("⚠ No podés eliminar la plantilla que tenés abierta. Abrí otra primero.", "warn", 4000);
+    return;
+  }
+  const ok = await confirmar("Eliminar plantilla", "Se va a borrar \"" + nombre + "\" y todas sus cajas. Esta acción no se puede deshacer.");
+  if(!ok) return;
+
+  try{
+    // Limpiamos también las rutas en vivo (textoLive/visibilidadImagen) de
+    // las cajas que pertenecían a esta plantilla, para no dejar basura.
+    const snapCajas = await get(ref(database, "plantillas/" + id + "/cajas"));
+    const cajas = snapCajas.exists() ? snapCajas.val() : {};
+    const limpieza = {};
+    Object.keys(cajas).forEach(cid=>{
+      if(cajas[cid].tipo === "texto") limpieza["textoLive/" + cid] = null;
+      if(cajas[cid].tipo === "imagen") limpieza["visibilidadImagen/" + cid] = null;
+    });
+    limpieza["plantillas/" + id] = null;
+    limpieza["plantillasMeta/" + id] = null;
+    await update(ref(database), limpieza);
+  } catch(err){
+    mostrarToast("❌ No se pudo eliminar: " + err.message, "error");
+    return;
+  }
+  delete plantillasMetaCache[id];
+  renderPanelPlantillas();
+  mostrarToast("🗑 Plantilla \"" + nombre + "\" eliminada", "info");
+}
+
 function iconoTipo(tipo){
   if(tipo === "texto") return "🔤";
   if(tipo === "imagen") return "🖼";
@@ -2077,16 +2448,21 @@ document.getElementById("eliminar").onclick = async ()=>{
 
 // BOTÓN GUARDAR
 document.getElementById("guardar").onclick = ()=>{
+  if(!idPlantillaActual){
+    mostrarToast("⚠ Todavía no hay una plantilla abierta", "warn");
+    return;
+  }
   let diseño = {};
   document.querySelectorAll(".box").forEach(box=>{ diseño[box.id] = datosDeBox(box); });
 
+  const base = "plantillas/" + idPlantillaActual + "/cajas/";
   const cambios = {};
   Object.keys(diseño).forEach(id=>{
     const valorNuevo = JSON.stringify(diseño[id]);
-    if(ultimoGuardado[id] !== valorNuevo){ cambios["diseño/" + id] = diseño[id]; }
+    if(ultimoGuardado[id] !== valorNuevo){ cambios[base + id] = diseño[id]; }
   });
   Object.keys(ultimoGuardado).forEach(id=>{
-    if(!(id in diseño)) cambios["diseño/" + id] = null;
+    if(!(id in diseño)) cambios[base + id] = null;
   });
 
   if(Object.keys(cambios).length === 0){
@@ -2127,21 +2503,48 @@ document.getElementById("modalEditarGuardar").onclick = ()=>{
   boxEnEdicion = null;
 };
 
-// CARGA INICIAL
+// CARGA INICIAL — con migración automática de "diseño/" (formato viejo, una
+// sola plantilla implícita) a "plantillasMeta/" + "plantillas/" (formato
+// nuevo, biblioteca). Corre una sola vez: si ya existe plantillasMeta, no
+// toca nada y sigue de largo con normalidad.
 async function iniciar(){
-  const snapshot = await get(ref(database, "diseño"));
-  const existiaEnFirebase = snapshot.exists();
-  const datos = existiaEnFirebase ? snapshot.val() : cajasPorDefecto;
-  Object.keys(datos).forEach(id=>{
-    const item = datos[id];
-    if(item.tipo === "texto") crearBoxTexto(id, item);
-    else if(item.tipo === "iframe") crearBoxIframe(id, item);
-    else if(item.tipo === "imagen") crearBoxImagen(id, item);
-  });
-  if(existiaEnFirebase){
-    Object.keys(datos).forEach(id=>{ ultimoGuardado[id] = JSON.stringify(datos[id]); });
+  try{
+    const metaSnap = await get(ref(database, "plantillasMeta"));
+
+    if(!metaSnap.exists()){
+      // Primera vez con esta versión: migramos lo que ya había.
+      const legacySnap = await get(ref(database, "diseño"));
+      const cajasIniciales = legacySnap.exists() ? legacySnap.val() : cajasPorDefecto;
+      const idNuevo = "plantilla_" + Date.now();
+
+      await update(ref(database), {
+        ["plantillasMeta/" + idNuevo]: { nombre: "Plantilla 1" },
+        ["plantillas/" + idNuevo + "/cajas"]: cajasIniciales,
+        "plantillaActiva": idNuevo
+      });
+
+      plantillasMetaCache = { [idNuevo]: { nombre: "Plantilla 1" } };
+      cargarPlantillaEnCanvas(idNuevo, cajasIniciales);
+      mostrarToast("📚 Tu diseño anterior se guardó como \"Plantilla 1\"", "info", 4500);
+    } else {
+      plantillasMetaCache = metaSnap.val();
+      const idsDisponibles = Object.keys(plantillasMetaCache);
+
+      const activaSnap = await get(ref(database, "plantillaActiva"));
+      let idAAbrir = activaSnap.exists() ? activaSnap.val() : null;
+      if(!idAAbrir || !plantillasMetaCache[idAAbrir]){
+        idAAbrir = idsDisponibles[0];
+        if(idAAbrir) await set(ref(database, "plantillaActiva"), idAAbrir);
+      }
+
+      if(idAAbrir){
+        const cajasSnap = await get(ref(database, "plantillas/" + idAAbrir + "/cajas"));
+        cargarPlantillaEnCanvas(idAAbrir, cajasSnap.exists() ? cajasSnap.val() : {});
+      }
+    }
+  } catch(err){
+    mostrarToast("❌ No se pudo cargar la biblioteca de plantillas: " + err.message, "error", 6000);
   }
-  renderPanelCapas();
 }
 iniciar();
 </script>
