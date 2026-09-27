@@ -187,7 +187,10 @@ function actualizarBoxTexto(box, datos){
   if(contenido) aplicarAnimacion(box, contenido, datos.animacion, contenido.dataset.valorActual);
 }
 
-onValue(ref(database, "diseño"), (snapshot)=>{
+// Procesa un snapshot de "cajas" (venga de una plantilla o del diseño/ viejo)
+// y sincroniza el DOM contra lo que hay ahí. Misma lógica de siempre, ahora
+// reutilizable sin importar de qué ruta de Firebase vino el dato.
+function manejarSnapshotCajas(snapshot){
   const diseño = snapshot.exists() ? snapshot.val() : {};
   const idsNuevos = Object.keys(diseño);
 
@@ -218,6 +221,50 @@ onValue(ref(database, "diseño"), (snapshot)=>{
       actualizarBoxIframe(existente.box, datos);
     }
   });
+}
+
+// Borra del DOM todas las cajas actuales (se usa al cambiar de plantilla,
+// para no dejar mezcladas cajas de la plantilla anterior con la nueva).
+function limpiarTodasLasCajas(){
+  Object.keys(cajasCreadas).forEach(id=>{
+    if(typeof cajasCreadas[id].unsub === "function") cajasCreadas[id].unsub();
+    detenerAnimacion(id);
+    cajasCreadas[id].box.remove();
+    delete cajasCreadas[id];
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  BIBLIOTECA DE PLANTILLAS
+//  El overlay solo se suscribe a las cajas de la plantilla ACTIVA — las cajas
+//  de cualquier otra plantilla guardada nunca se leen ni se cargan acá, así
+//  que no consumen nada mientras no estén al aire.
+// ═══════════════════════════════════════════════════════
+let unsubCajasActuales = null;
+
+function suscribirseAPlantilla(idPlantilla){
+  if(unsubCajasActuales){ unsubCajasActuales(); unsubCajasActuales = null; }
+  limpiarTodasLasCajas();
+  if(!idPlantilla) return;
+  unsubCajasActuales = onValue(ref(database, "plantillas/" + idPlantilla + "/cajas"), manejarSnapshotCajas);
+}
+
+// Compatibilidad hacia atrás: si todavía no existe "plantillaActiva" en
+// Firebase (por ejemplo, la primera vez que se abre este overlay con la
+// versión nueva, antes de que el editor migre los datos viejos), seguimos
+// leyendo directo de "diseño/" como se hacía antes. Así el overlay nunca
+// queda en blanco durante la transición.
+function suscribirseALegado(){
+  if(unsubCajasActuales){ unsubCajasActuales(); unsubCajasActuales = null; }
+  unsubCajasActuales = onValue(ref(database, "diseño"), manejarSnapshotCajas);
+}
+
+onValue(ref(database, "plantillaActiva"), (snapshot)=>{
+  if(snapshot.exists() && snapshot.val()){
+    suscribirseAPlantilla(snapshot.val());
+  } else {
+    suscribirseALegado();
+  }
 });
 
 </script>
