@@ -2307,12 +2307,36 @@ async function duplicarPlantilla(idOrigen, nombreOrigen){
     mostrarToast("❌ No se pudo duplicar: " + err.message, "error");
     return;
   }
+
+  // Le damos a cada caja un ID nuevo (en vez de copiar los originales tal cual).
+  // Si no lo hiciéramos, las cajas de texto de esta copia compartirían la misma
+  // ruta "textoLive/<id>" que las de la plantilla original — y como esa ruta es
+  // global (no por plantilla), el texto que se ve en el overlay de una plantilla
+  // podía terminar mostrando lo último que se escribió para la otra.
+  // Solo las cajas de TEXTO necesitan un ID nuevo (por el tema de "textoLive"
+  // explicado arriba). Los widgets de Tikfinity/Lightstream (tipo "iframe") y
+  // las imágenes se copian tal cual, con su ID original — no tienen ese
+  // problema y así evitamos tocar algo que ya andaba bien.
   const idNuevo = "plantilla_" + Date.now();
+  const cajasNuevas = {};
+  const escrituras = {
+    ["plantillasMeta/" + idNuevo]: { nombre: nombreNuevo }
+  };
+  let contador = 0;
+  Object.keys(cajas).forEach(idOriginal=>{
+    const caja = cajas[idOriginal];
+    if(caja.tipo === "texto"){
+      const idCajaNueva = "texto_" + Date.now() + "_" + (contador++);
+      cajasNuevas[idCajaNueva] = caja;
+      escrituras["textoLive/" + idCajaNueva] = caja.contenido || "";
+    } else {
+      cajasNuevas[idOriginal] = caja;
+    }
+  });
+  escrituras["plantillas/" + idNuevo + "/cajas"] = cajasNuevas;
+
   try{
-    await update(ref(database), {
-      ["plantillasMeta/" + idNuevo]: { nombre: nombreNuevo },
-      ["plantillas/" + idNuevo + "/cajas"]: cajas
-    });
+    await update(ref(database), escrituras);
   } catch(err){
     mostrarToast("❌ No se pudo duplicar: " + err.message, "error");
     return;
