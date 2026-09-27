@@ -67,7 +67,8 @@ html,body{
   position:absolute;
   left:0; top:0;
   width:1080px; height:1920px;
-  object-fit:fill;
+  object-fit:contain;
+  background:#000;
   z-index:-999999;
   pointer-events:none;
 }
@@ -807,6 +808,9 @@ iframe{
     <div class="tb-titulo">Panel</div>
     <button class="tb-btn" id="toggleCapas"><span class="ic">🗂</span><span class="txt">Capas</span></button>
     <button class="tb-btn" id="togglePlantillas"><span class="ic">📚</span><span class="txt">Plantillas</span></button>
+    <button class="tb-btn" id="cambiarGuia"><span class="ic">🧭</span><span class="txt">Imagen guía</span></button>
+    <button class="tb-btn" id="quitarGuia"><span class="ic">↺</span><span class="txt">Restablecer guía</span></button>
+    <input type="file" id="inputGuia" accept="image/*" style="display:none">
   </div>
 
   <div class="tb-hint">Flechas del teclado mueven 1px (Shift = 10px). Ctrl+Z deshace. Arrastrá para alinear con guías.</div>
@@ -1978,6 +1982,54 @@ function abrirModalImagen(box){
 }
 
 function editarBoxImagen(box){ abrirModalImagen(box); }
+
+// ═══════════════════════════════════════════════════════
+//  IMAGEN GUÍA — antes era un archivo fijo (guia.jpeg) que solo se
+//  podía cambiar editando el repositorio en GitHub. Ahora se guarda en
+//  Firebase (comprimida, igual que las imágenes normales) y se carga
+//  desde ahí; si todavía no se subió ninguna, se usa guia.jpeg como
+//  respaldo para no romper nada.
+// ═══════════════════════════════════════════════════════
+const imgGuia = document.getElementById("guia");
+const inputGuia = document.getElementById("inputGuia");
+
+onValue(ref(database, "imagenGuia"), (snapshot)=>{
+  if(snapshot.exists() && snapshot.val()){
+    imgGuia.src = snapshot.val();
+  } else {
+    imgGuia.src = "guia.jpeg";
+  }
+});
+
+document.getElementById("cambiarGuia").onclick = ()=> inputGuia.click();
+
+inputGuia.addEventListener("change", ()=>{
+  const archivo = inputGuia.files[0];
+  if(!archivo) return;
+  if(!archivo.type.startsWith("image/")){
+    mostrarToast("⚠ Elegí un archivo de imagen válido", "warn");
+    inputGuia.value = "";
+    return;
+  }
+  mostrarToast("Subiendo imagen guía…", "info");
+  // maxAncho 1080 = mismo ancho que el canvas, no hace falta más resolución
+  comprimirImagen(archivo, 1080, 0.85).then(dataUrl=>{
+    return set(ref(database, "imagenGuia"), dataUrl);
+  }).then(()=>{
+    mostrarToast("✅ Imagen guía actualizada", "success");
+  }).catch(err=>{
+    mostrarToast("❌ No se pudo subir la imagen guía: " + err.message, "error");
+  }).finally(()=>{
+    inputGuia.value = "";
+  });
+});
+
+document.getElementById("quitarGuia").onclick = ()=>{
+  if(!confirm("¿Restablecer la imagen guía original del proyecto?")) return;
+  remove(ref(database, "imagenGuia"))
+    .then(()=> mostrarToast("Imagen guía restablecida", "info"))
+    .catch(err=> mostrarToast("❌ Error al restablecer: " + err.message, "error"));
+};
 
 document.getElementById("agregarImagen").onclick = ()=>{ abrirModalImagen(null); };
 
