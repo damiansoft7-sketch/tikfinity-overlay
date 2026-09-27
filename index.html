@@ -748,6 +748,11 @@ iframe{
     -webkit-overflow-scrolling:touch;
     align-items:center;
   }
+  /* El toolbar queda "flotando" fijo arriba de #vista (que sigue ocupando
+     el 100vh completo), así que sin este padding-top el diseño se centra
+     usando TODA la pantalla y su parte de arriba termina tapada detrás
+     de la barra — por eso se veía "fuera de margen". */
+  #vista{ padding-top:60px; }
   #toolbar .marca{ display:none; }
   #toolbar .tb-hint{ display:none; }
   .tb-grupo{ flex-direction:row; flex-shrink:0; }
@@ -1619,11 +1624,16 @@ const ZOOM_MIN = 0.4, ZOOM_MAX = 3, ZOOM_PASO = 0.1;
 let escalaAjuste = 1;   // escala calculada para que el canvas entre en pantalla ("100%")
 let factorZoom = 1;     // multiplicador manual sobre escalaAjuste (lo mueven los botones/pellizco)
 const zoomValorEl = document.getElementById("zoomValor");
+const toolbarEl = document.getElementById("toolbar");
 
 function calcularEscalaAjuste(){
   const esMovil = window.matchMedia("(max-width: 900px)").matches;
   if(esMovil){
-    return Math.min(window.innerWidth / 1080, (window.innerHeight - 70) / 1920);
+    // Alto real del toolbar (fijo arriba, tapa esa franja de #vista) — se mide
+    // en vivo en vez de usar un número fijo, para que nunca se desincronice
+    // con el padding-top que le reservamos a #vista en el CSS de mobile.
+    const alturaBarra = (toolbarEl && toolbarEl.offsetHeight) || 60;
+    return Math.min(window.innerWidth / 1080, (window.innerHeight - alturaBarra) / 1920);
   }
   return Math.min((window.innerWidth - 520) / 1080, (window.innerHeight - 40) / 1920);
 }
