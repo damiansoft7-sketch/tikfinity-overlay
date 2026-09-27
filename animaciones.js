@@ -3,17 +3,67 @@
 //  Módulo compartido de animaciones de texto para cajas
 //  Modos soportados: "ninguna" | "marquee" | "palabras"
 //  Usado por index.html (preview en editor) y overlay.html (render final)
+//
+//  OPTIMIZACIÓN: todos los marquees activos comparten UN solo bucle de
+//  requestAnimationFrame (en vez de uno por caja) y se actualizan a un
+//  techo de ~30fps en vez de 60 — para texto que se desliza no se nota
+//  la diferencia visual, pero es la mitad del trabajo para CPU/GPU.
+//  El bucle también se pausa solo cuando la pestaña queda oculta.
 // ═══════════════════════════════════════════════════════
 
-const estados = new Map(); // boxId -> { tipo, rafId, intervalId, span, timeoutId }
+const estados = new Map(); // boxId -> { tipo, intervalId, span, timeoutId, contenido, velocidad, x }
+
+const FPS_MARQUEE = 30;
+const INTERVALO_MARQUEE_MS = 1000 / FPS_MARQUEE;
+let rafCompartidoId = null;
+let ultimoTiempoCompartido = null;
+
+function bucleMarqueeCompartido(t){
+  rafCompartidoId = requestAnimationFrame(bucleMarqueeCompartido);
+
+  if(document.hidden) { ultimoTiempoCompartido = null; return; } // pausado si no se ve
+
+  if(ultimoTiempoCompartido === null) ultimoTiempoCompartido = t;
+  const dtDesdeUltimoFrame = t - ultimoTiempoCompartido;
+  if(dtDesdeUltimoFrame < INTERVALO_MARQUEE_MS) return; // aún no toca actualizar (techo de ~30fps)
+
+  const dt = dtDesdeUltimoFrame / 1000;
+  ultimoTiempoCompartido = t;
+
+  estados.forEach(estado=>{
+    if(estado.tipo !== "marquee") return;
+    const { contenido, span } = estado;
+    estado.x -= estado.velocidad * dt;
+    const anchoTexto = span.offsetWidth || 0;
+    if(estado.x < -anchoTexto){
+      estado.x = contenido.clientWidth;
+    }
+    span.style.transform = `translateX(${estado.x}px) translateY(-50%)`;
+  });
+}
+
+function asegurarBucleCompartidoActivo(){
+  if(rafCompartidoId === null){
+    ultimoTiempoCompartido = null;
+    rafCompartidoId = requestAnimationFrame(bucleMarqueeCompartido);
+  }
+}
+
+function detenerBucleCompartidoSiNoHaceFalta(){
+  const quedanMarquees = Array.from(estados.values()).some(e => e.tipo === "marquee");
+  if(!quedanMarquees && rafCompartidoId !== null){
+    cancelAnimationFrame(rafCompartidoId);
+    rafCompartidoId = null;
+  }
+}
 
 export function detenerAnimacion(boxId){
   const estado = estados.get(boxId);
   if(!estado) return;
-  if(estado.rafId) cancelAnimationFrame(estado.rafId);
   if(estado.intervalId) clearInterval(estado.intervalId);
   if(estado.timeoutId) clearTimeout(estado.timeoutId);
   estados.delete(boxId);
+  detenerBucleCompartidoSiNoHaceFalta();
 }
 
 // Limpia estilos/nodos que pudo haber dejado un modo anterior.
@@ -88,29 +138,13 @@ function iniciarMarquee(box, contenido, config, textoInicial){
   span.textContent = textoInicial;
   contenido.appendChild(span);
 
-  let x = contenido.clientWidth;
-  let ultimoTiempo = null;
-
-  function frame(t){
-    if(ultimoTiempo === null) ultimoTiempo = t;
-    const dt = (t - ultimoTiempo) / 1000;
-    ultimoTiempo = t;
-
-    x -= velocidad * dt;
-    const anchoTexto = span.offsetWidth || 0;
-    if(x < -anchoTexto){
-      x = contenido.clientWidth;
-    }
-    span.style.transform = `translateX(${x}px) translateY(-50%)`;
-
-    const rafId = requestAnimationFrame(frame);
-    const estadoActual = estados.get(box.id) || {};
-    estadoActual.rafId = rafId;
-    estados.set(box.id, estadoActual);
-  }
-
-  const rafId = requestAnimationFrame(frame);
-  estados.set(box.id, { tipo: "marquee", rafId });
+  estados.set(box.id, {
+    tipo: "marquee",
+    contenido, span,
+    velocidad,
+    x: contenido.clientWidth
+  });
+  asegurarBucleCompartidoActivo();
 
   contenido._actualizarTextoAnimado = (nuevoTexto)=>{
     span.textContent = nuevoTexto;
